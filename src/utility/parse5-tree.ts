@@ -27,10 +27,6 @@ export function isParentNode(node: DefaultTreeNode): node is DefaultTreeParentNo
 	return Array.isArray((node as DefaultTreeParentNode).childNodes);
 }
 
-export function getAttributeLocationInfo(element: DefaultTreeElement, name: string) {
-	return element.sourceCodeLocation!.attrs[name];
-}
-
 export function getAttributeValue(element: DefaultTreeElement, name: string): string | undefined {
 	for (const attribute of element.attrs) {
 		if (attribute.name === name) {
@@ -39,11 +35,11 @@ export function getAttributeValue(element: DefaultTreeElement, name: string): st
 	}
 }
 
-export function analyzeElementContent(element: DefaultTreeElement) {
+export function analyzeElementContent(element: DefaultTreeElement, ignoreTextContent: (textContent: string) => boolean) {
 	let hasText = false;
 	let hasElements = false;
 	for (const node of element.childNodes) {
-		if (adapter.isTextNode(node)) {
+		if (adapter.isTextNode(node) && !ignoreTextContent(adapter.getTextNodeContent(node))) {
 			hasText = true;
 		} else if (adapter.isElementNode(node)) {
 			hasElements = true;

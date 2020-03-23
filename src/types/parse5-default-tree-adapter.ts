@@ -2,10 +2,6 @@
 declare module "parse5/lib/tree-adapters/default" {
 	import * as lib from "parse5";
 
-	// Typedefs for DefaultTreeDocumentFragment are wrong:
-	interface Template {
-	}
-
 	interface DefaultTreeAdapter extends lib.TreeAdapter {
 		createDocument(): lib.DefaultTreeDocument;
 		createDocumentFragment(): lib.DefaultTreeDocumentFragment;

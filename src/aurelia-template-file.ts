@@ -4,6 +4,9 @@ import { Config, ConfigLocalizedElement, ElementContentLocalizationType } from "
 import { AureliaI18nAttribute } from "./aurelia-i18n-attribute";
 import { Source } from "./source";
 
+/**
+ * Represents a localized aurelia template file.
+ */
 export class AureliaTemplateFile implements Source {
 	private constructor(
 		private readonly _source: string,

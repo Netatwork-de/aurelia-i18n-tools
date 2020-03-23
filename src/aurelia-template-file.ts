@@ -2,8 +2,9 @@ import { parseFragment, DefaultTreeDocumentFragment, DefaultTreeElement } from "
 import { traverseElements, getAttributeValue, analyzeElementContent } from "./utility/parse5-tree";
 import { Config, ConfigLocalizedElement, ElementContentLocalizationType } from "./config";
 import { AureliaI18nAttribute } from "./aurelia-i18n-attribute";
+import { Source } from "./source";
 
-export class AureliaTemplateFile {
+export class AureliaTemplateFile implements Source {
 	private constructor(
 		private readonly _source: string,
 		private readonly _root: DefaultTreeDocumentFragment
@@ -14,6 +15,46 @@ export class AureliaTemplateFile {
 			scriptingEnabled: false,
 			sourceCodeLocationInfo: true
 		}) as DefaultTreeDocumentFragment);
+	}
+
+	public extractKeys(config: Config) {
+		const keys = new Map<string, string>();
+		function add(key: string, value: string) {
+			if (keys.has(key)) {
+				// TODO: Raise diagnostic for duplicate key.
+			}
+			keys.set(key, value);
+		}
+
+		for (const element of traverseElements(this._root, config.ignoreElement)) {
+			const attributeValue = getAttributeValue(element, "t");
+			if (attributeValue) {
+				try {
+					const attribute = AureliaI18nAttribute.parse(attributeValue);
+					for (const [name, key] of attribute) {
+						if (name === "text" || name === "html") {
+							const { text, hasElements } = analyzeElementContent(element, config.ignoreTextContent);
+							if (hasElements) {
+								// TODO: Raise diagnostic localized text content that contains elements.
+							}
+							add(key, text);
+						} else {
+							const value = getAttributeValue(element, name);
+							if (value === undefined) {
+								// TODO: Raise diagnostic for missing localized attribute.
+							} else if (config.ignoreAttributeValue(value)) {
+								// TODO: Raise diagnostic for localized attribute value that is ignored.
+							} else {
+								add(key, value);
+							}
+						}
+					}
+				} catch {
+					// TODO: Raise diagnostic for invalid i18n attribute.
+				}
+			}
+		}
+		return keys;
 	}
 
 	/**

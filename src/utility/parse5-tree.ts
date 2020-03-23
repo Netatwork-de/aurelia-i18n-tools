@@ -36,11 +36,16 @@ export function getAttributeValue(element: DefaultTreeElement, name: string): st
 }
 
 export function analyzeElementContent(element: DefaultTreeElement, ignoreTextContent: (textContent: string) => boolean) {
+	let text = "";
 	let hasText = false;
 	let hasElements = false;
 	for (const node of element.childNodes) {
-		if (adapter.isTextNode(node) && !ignoreTextContent(adapter.getTextNodeContent(node))) {
-			hasText = true;
+		if (adapter.isTextNode(node)) {
+			const content = adapter.getTextNodeContent(node);
+			if (!ignoreTextContent(content)) {
+				text += content;
+				hasText = true;
+			}
 		} else if (adapter.isElementNode(node)) {
 			hasElements = true;
 		}
@@ -48,5 +53,5 @@ export function analyzeElementContent(element: DefaultTreeElement, ignoreTextCon
 			break;
 		}
 	}
-	return { hasText, hasElements };
+	return { text, hasText, hasElements };
 }

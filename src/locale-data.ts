@@ -1,3 +1,4 @@
+import { Diagnostics, Diagnostic } from "./diagnostics";
 
 export interface LocaleData {
 	[part: string]: LocaleData | string;
@@ -39,13 +40,16 @@ export namespace LocaleData {
 	/**
 	 * Merge a source locale data into the target locale data.
 	 */
-	export function merge(target: LocaleData, source: LocaleData) {
+	export function merge(target: LocaleData, source: LocaleData, diagnostics: Diagnostics) {
 		(function merge(to: LocaleData, from: LocaleData, path: string[]) {
 			for (const part in from) {
 				const child = from[part];
 				if (typeof child === "string") {
 					if (part in to) {
-						// TODO: Raise diagnostic for duplicate key.
+						diagnostics.report({
+							type: Diagnostic.Type.MergeDuplicateKeyOrPath,
+							details: { path: path.concat(part) }
+						});
 					} else {
 						to[part] = child;
 					}
@@ -53,7 +57,10 @@ export namespace LocaleData {
 					if (part in to) {
 						const target = to[part];
 						if (typeof target === "string") {
-							// TODO: Raise diagnostic for duplicate key.
+							diagnostics.report({
+								type: Diagnostic.Type.MergeDuplicateKeyOrPath,
+								details: { path: path.concat(part) }
+							});
 						} else {
 							merge(target, child, path.concat(part));
 						}
@@ -70,9 +77,9 @@ export namespace LocaleData {
 	 * @param sources The objects to combine.
 	 * @returns The new locale data object.
 	 */
-	export function combine(sources: LocaleData[]) {
+	export function combine(sources: LocaleData[], diagnostics: Diagnostics) {
 		const target = createNew();
-		sources.forEach(source => merge(target, source));
+		sources.forEach(source => merge(target, source, diagnostics));
 		return target;
 	}
 }

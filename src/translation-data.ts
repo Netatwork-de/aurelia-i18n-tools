@@ -1,6 +1,7 @@
 import * as path from "path";
 import { LocaleData } from "./locale-data";
 import { Config } from "./config";
+import { Diagnostics, Diagnostic } from "./diagnostics";
 
 /**
  * A container for translation data that is used as an
@@ -53,24 +54,28 @@ export class TranslationData {
 	 * @param config The project configuration.
 	 * @returns A map of locale ids to compiled locale data.
 	 */
-	public compile(config: Config) {
+	public compile(config: Config, diagnostics: Diagnostics) {
 		const locales = new Map<string, LocaleData>();
-		function setKey(localeId: string, key: string, content: string) {
-			let locale = locales.get(localeId);
-			if (!locale) {
-				locale = LocaleData.createNew();
-				locales.set(localeId, locale);
-			}
-			if (!LocaleData.set(locale, key, content)) {
-				// TODO: Raise diagnostic for duplicate key.
-			}
-		}
 		for (const [filename, file] of this.files) {
 			for (const [key, translationSet] of file.content) {
-				setKey(config.sourceLocaleId, key, translationSet.source.content);
+				function setKey(localeId: string, content: string) {
+					let locale = locales.get(localeId);
+					if (!locale) {
+						locale = LocaleData.createNew();
+						locales.set(localeId, locale);
+					}
+					if (!LocaleData.set(locale, key, content)) {
+						diagnostics.report({
+							type: Diagnostic.Type.CompileDuplicateKey,
+							details: { key },
+							filename
+						});
+					}
+				}
+				setKey(config.sourceLocaleId, translationSet.source.content);
 				for (const [localeId, translation] of translationSet.translations) {
 					if (translation.lastModified >= translationSet.source.lastModified) {
-						setKey(localeId, key, translation.content);
+						setKey(localeId, translation.content);
 					}
 				}
 			}

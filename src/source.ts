@@ -1,4 +1,5 @@
 import { Config } from "./config";
+import { Diagnostics } from "./diagnostics";
 
 export interface Source {
 	/**
@@ -7,7 +8,7 @@ export interface Source {
 	 * @param options The extract options.
 	 * @returns A map of i18n keys to english translations
 	 */
-	extractKeys(config: Config, options: SourceExtractKeysOptions): Map<string, string>;
+	extractKeys(config: Config, options: SourceExtractKeysOptions, diagnostics: Diagnostics): Map<string, string>;
 }
 
 export interface SourceExtractKeysOptions {

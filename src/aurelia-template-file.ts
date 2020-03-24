@@ -1,59 +1,85 @@
 import { parseFragment, DefaultTreeDocumentFragment, DefaultTreeElement } from "parse5";
-import { traverseElements, getAttributeValue, analyzeElementContent } from "./utility/parse5-tree";
+import { traverseElements, getAttributeValue, analyzeElementContent, treeDiagnostics } from "./utility/parse5-tree";
 import { Config, ConfigLocalizedElement, ElementContentLocalizationType } from "./config";
 import { AureliaI18nAttribute } from "./aurelia-i18n-attribute";
-import { Source } from "./source";
+import { Source, SourceExtractKeysOptions } from "./source";
+import { Diagnostics, Diagnostic } from "./diagnostics";
 
 /**
  * Represents a localized aurelia template file.
  */
 export class AureliaTemplateFile implements Source {
 	private constructor(
+		private readonly _filename: string,
 		private readonly _source: string,
 		private readonly _root: DefaultTreeDocumentFragment
 	) {}
 
-	public static parse(source: string) {
-		return new AureliaTemplateFile(source, parseFragment(source, {
+	public static parse(filename: string, source: string) {
+		return new AureliaTemplateFile(filename, source, parseFragment(source, {
 			scriptingEnabled: false,
 			sourceCodeLocationInfo: true
 		}) as DefaultTreeDocumentFragment);
 	}
 
-	public extractKeys(config: Config) {
+	public extractKeys(config: Config, options: SourceExtractKeysOptions, diagnostics: Diagnostics) {
 		const keys = new Map<string, string>();
-		function add(key: string, value: string) {
-			if (keys.has(key)) {
-				// TODO: Raise diagnostic for duplicate key.
-			}
-			keys.set(key, value);
-		}
-
 		for (const element of traverseElements(this._root, config.ignoreElement)) {
 			const attributeValue = getAttributeValue(element, "t");
 			if (attributeValue) {
 				try {
 					const attribute = AureliaI18nAttribute.parse(attributeValue);
 					for (const [name, key] of attribute) {
+						function add(this: AureliaTemplateFile, key: string, value: string) {
+							if (keys.has(key)) {
+								diagnostics.report({
+									type: Diagnostic.Type.ExtractDuplicateKey,
+									details: { key },
+									filename: this._filename,
+									...treeDiagnostics.attribute(element, "t")
+								});
+							}
+							keys.set(key, value);
+						}
 						if (name === "text" || name === "html") {
 							const { text, hasElements } = analyzeElementContent(element, config.ignoreTextContent);
 							if (hasElements) {
-								// TODO: Raise diagnostic localized text content that contains elements.
+								diagnostics.report({
+									type: Diagnostic.Type.ExtractInvalidLocalizedContent,
+									details: { key },
+									filename: this._filename,
+									...treeDiagnostics.content(element)
+								});
 							}
-							add(key, text);
+							add.call(this, key, text);
 						} else {
 							const value = getAttributeValue(element, name);
 							if (value === undefined) {
-								// TODO: Raise diagnostic for missing localized attribute.
+								diagnostics.report({
+									type: Diagnostic.Type.ExtractMissingAttribute,
+									details: { key, name },
+									filename: this._filename,
+									...treeDiagnostics.startTag(element)
+								});
 							} else if (config.ignoreAttributeValue(value)) {
-								// TODO: Raise diagnostic for localized attribute value that is ignored.
+								diagnostics.report({
+									type: Diagnostic.Type.ExtractInvalidAttributeValue,
+									details: { key, name },
+									filename: this._filename,
+									...treeDiagnostics.attribute(element, name)
+								})
 							} else {
-								add(key, value);
+								add.call(this, key, value);
 							}
 						}
 					}
-				} catch {
-					// TODO: Raise diagnostic for invalid i18n attribute.
+				} catch (error) {
+					diagnostics.report({
+						type: Diagnostic.Type.ExtractInvalidTAttribute,
+						details: { error },
+						filename: this._filename,
+						...treeDiagnostics.attribute(element, "t")
+					});
 				}
 			}
 		}
@@ -66,35 +92,57 @@ export class AureliaTemplateFile implements Source {
 	 * @param config
 	 * @param prefix
 	 */
-	public justifyKeys(config: Config, options: JustifyOptions) {
+	public justifyKeys(config: Config, options: JustifyOptions, diagnostics: Diagnostics) {
 		const knownKeys = new Set<string>();
 		const candidates: JustificationCandidate[] = [];
 
 		for (const element of traverseElements(this._root, config.ignoreElement)) {
 			const elementConfig = config.localizedElements.get(element.tagName);
+			const { hasText, hasElements } = analyzeElementContent(element, config.ignoreTextContent);
+			const originalAttributeValue = getAttributeValue(element, "t");
 			if (elementConfig) {
-				const { hasText, hasElements } = analyzeElementContent(element, config.ignoreTextContent);
 				if (hasText && hasElements) {
-					// TODO: Raise diagnostic that node contains mixed content.
+					diagnostics.report({
+						type: Diagnostic.Type.JustifyMixedContent,
+						details: {},
+						filename: this._filename,
+						...treeDiagnostics.content(element)
+					});
 				}
 
 				let originalAttribute: AureliaI18nAttribute | undefined;
-				const originalAttributeValue = getAttributeValue(element, "t");
 				if (originalAttributeValue) {
 					try {
 						originalAttribute = AureliaI18nAttribute.parse(originalAttributeValue);
 						for (const key of originalAttribute.keys()) {
 							knownKeys.add(key);
 						}
-					} catch {
-						// TODO: Raise diagnostic for invalid i18n attribute.
+					} catch (error) {
+						diagnostics.report({
+							type: Diagnostic.Type.JustifyInvalidTAttribute,
+							details: { error },
+							filename: this._filename,
+							...treeDiagnostics.attribute(element, "t")
+						});
 					}
 				}
 
 				candidates.push({ element, elementConfig, hasText, originalAttribute });
 			} else {
-				// TODO: Raise diagnostic if node contains text.
-				// TODO: Raise diagnostic if node has an i18n attribute.
+				if (hasText) {
+					diagnostics.report({
+						type: Diagnostic.Type.JustifyUnlocalizedText,
+						details: {},
+						...treeDiagnostics.content(element)
+					});
+				}
+				if (originalAttributeValue) {
+					diagnostics.report({
+						type: Diagnostic.Type.JustifyDisallowedTAttribute,
+						details: {},
+						...treeDiagnostics.startTag(element)
+					});
+				}
 			}
 		}
 
@@ -121,14 +169,20 @@ export class AureliaTemplateFile implements Source {
 				if (hasText || htmlKey || textKey) {
 					attribute.set(elementConfig.content, getUniqueKey(htmlKey || textKey));
 				}
-			} else if (htmlKey) {
-				// TODO: Raise diagnostic that html content is localized but not allowed.
-				attribute.set("html", htmlKey);
-			} else if (textKey) {
-				// TODO: Raise diagnostic that text content is localized but not allowed.
-				attribute.set("text", textKey);
-			} else if (hasText) {
-				// TODO: Raise diagnostic that node has text content that is not allowed.
+			} else {
+				if (htmlKey) {
+					attribute.set("html", htmlKey);
+				} else if (textKey) {
+					attribute.set("text", textKey);
+				}
+				if (hasText || htmlKey || textKey) {
+					diagnostics.report({
+						type: Diagnostic.Type.JustifyDisallowedContent,
+						details: {},
+						filename: this._filename,
+						...treeDiagnostics.content
+					});
+				}
 			}
 
 			for (const attributeName of elementConfig.attributes) {
@@ -140,16 +194,26 @@ export class AureliaTemplateFile implements Source {
 			}
 
 			if (originalAttribute) {
-				for (const [name] of originalAttribute) {
+				for (const [name, key] of originalAttribute) {
 					if (name !== "text" && name !== "html" && !elementConfig.attributes.has(name)) {
-						// TODO: Raise diagnostic that non allowed attribute is already localized.
+						diagnostics.report({
+							type: Diagnostic.Type.JustifyDisallowedLocalizedAttribute,
+							details: { key, name },
+							filename: this._filename,
+							...treeDiagnostics.startTag(element)
+						});
 					}
 				}
 			}
 
 			for (const key of knownKeys) {
 				if (!key.startsWith(options.prefix)) {
-					// TODO: Raise diagnostic that keys have not been updated after a file was renamed.
+					diagnostics.report({
+						type: Diagnostic.Type.JustifyWrongPrefix,
+						details: { key, expectedPrefix: options.prefix },
+						filename: this._filename,
+						...treeDiagnostics.attribute(element, "t")
+					});
 				}
 			}
 

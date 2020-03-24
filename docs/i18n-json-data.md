@@ -11,7 +11,7 @@ The following schema represents the data in an `i18n.json` file.
 	"<filename>": {
 		// Every source entry contains an object with translations:
 		"content": {
-			// The full i18n key:
+			// The absolute i18n key:
 			"<key>": {
 				// The default english translation that is extracted from the source code:
 				"content": "<english content>",
@@ -20,7 +20,7 @@ The following schema represents the data in an `i18n.json` file.
 				// An array of string parts that can be ignored by external spell checkers:
 				"ignoreSpelling": [],
 				// An object with translations for every supported language other than english:
-				// - Unsupported or missing translations are omitted
+				// - Unsupported or missing translations may be omitted
 				"translations": {
 					// The locale key like ("de", or "fr"):
 					"<locale>": {
@@ -36,6 +36,11 @@ The following schema represents the data in an `i18n.json` file.
 		}
 	}
 }
+```
+
+Type definitions for the above schema are exported as `TranslationData.Json`
+```ts
+import { TranslationData } from "@netatwork/aurelia-i18n-tools";
 ```
 
 ## Formatting

@@ -1,8 +1,9 @@
 import { Source, SourceExtractKeysOptions } from "./source";
 import { Config } from "./config";
+import { LocaleData } from "./locale-data";
 
 export class JsonResourceFile implements Source {
-	public constructor(private readonly _data: JsonResourceData) {}
+	public constructor(private readonly _data: LocaleData) {}
 
 	public static parse(source: string) {
 		return new JsonResourceFile(JSON.parse(source));
@@ -10,7 +11,7 @@ export class JsonResourceFile implements Source {
 
 	public extractKeys(config: Config, options: SourceExtractKeysOptions) {
 		const keys = new Map<string, string>();
-		(function traverse(data: JsonResourceData, path: string[]) {
+		(function traverse(data: LocaleData, path: string[]) {
 			if (data === null || typeof data !== "object" || Array.isArray(data)) {
 				// TODO: Raise diagnostic for invalid data.
 			} else {
@@ -30,8 +31,4 @@ export class JsonResourceFile implements Source {
 		})(this._data, []);
 		return keys;
 	}
-}
-
-interface JsonResourceData {
-	[part: string]: JsonResourceData | string;
 }

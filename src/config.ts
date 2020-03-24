@@ -8,6 +8,18 @@ export interface ConfigOptions {
 	src?: string;
 
 	/**
+	 * A prefix that should be used for all keys in this project.
+	 * (excluding translations from external packages)
+	 */
+	prefix?: string;
+
+	/**
+	 * An id for the locale that is used in source files.
+	 * @default "en"
+	 */
+	sourceLocale?: string;
+
+	/**
 	 * A list of ignore rules.
 	 * Text content and attribute values that include interpolation are always ignored.
 	 */
@@ -45,6 +57,10 @@ export interface Config {
 	readonly context: string;
 	/** Absolute path of the source root directory */
 	readonly src: string;
+	/** A common prefix used for all keys */
+	readonly prefix: string;
+	/** An id for the locale that is used in source files. */
+	readonly sourceLocaleId: string;
 	/** A function that is called to check if an element and it's sub tree should be ignored. */
 	ignoreElement: (tagName: string) => boolean;
 	/** A function that is called to check text content should be ignored. */
@@ -132,9 +148,18 @@ export function createConfig(context: string, options: ConfigOptions): Config {
 		}
 	}
 
+	if (options.prefix !== undefined && typeof options.prefix !== "string") {
+		throw new TypeError(`prefix must be a string.`);
+	}
+	if (options.sourceLocale !== undefined && typeof options.sourceLocale !== "string") {
+		throw new TypeError(`sourceLocale must be a string.`);
+	}
+
 	return {
 		context,
 		src: path.resolve(context, options.src || "./src"),
+		prefix: options.prefix || "",
+		sourceLocaleId: options.sourceLocale || "en",
 		ignoreElement: createIgnoreFunction(ignoreElements),
 		ignoreTextContent: createIgnoreFunction(ignoreTextContent),
 		ignoreAttributeValue: createIgnoreFunction(ignoreAttributeValue),

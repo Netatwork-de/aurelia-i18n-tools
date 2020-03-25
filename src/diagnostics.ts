@@ -8,41 +8,33 @@ export interface Diagnostic<T extends Diagnostic.Type> extends DiagnosticLocatio
 
 export namespace Diagnostic {
 	export enum Type {
-		ExtractInvalidJsonData,
-		ExtractInvalidJsonPartName,
-		ExtractDuplicateKey,
-		ExtractInvalidLocalizedContent,
-		ExtractMissingAttribute,
-		ExtractInvalidAttributeValue,
-		ExtractInvalidTAttribute,
-		JustifyMixedContent,
-		JustifyInvalidTAttribute,
-		JustifyUnlocalizedText,
-		JustifyDisallowedTAttribute,
-		JustifyDisallowedContent,
-		JustifyDisallowedLocalizedAttribute,
-		JustifyWrongPrefix,
-		MergeDuplicateKeyOrPath,
-		CompileDuplicateKey
+		InvalidJsonData = "extract-invalid-json-data",
+		InvalidJsonPartName = "extract-invalid-json-part-name",
+		MixedContent = "justify-mixed-content",
+		InvalidTAttribute = "justify-invalid-t-attribute",
+		UnlocalizedText = "justify-unlocalized-text",
+		DisallowedTAttribute = "justify-disallowed-t-attribute",
+		DisallowedContent = "justify-disallowed-content",
+		DisallowedLocalizedAttribute = "justify-disallowed-localized-attribute",
+		WrongPrefix = "justify-wrong-prefix",
+		DuplicateKeyOrPath = "merge-duplicate-key-or-path",
+		DuplicateKey = "compile-duplicate-key",
+		OutdatedTranslation = "outdated-translation"
 	}
 
 	export type Details<T extends Type> = {
-		[Type.ExtractInvalidJsonData]: { path: string[] };
-		[Type.ExtractInvalidJsonPartName]: { path: string[] };
-		[Type.ExtractDuplicateKey]: { key: string };
-		[Type.ExtractInvalidLocalizedContent]: { key: string };
-		[Type.ExtractMissingAttribute]: { key: string, name: string };
-		[Type.ExtractInvalidAttributeValue]: { key: string, name: string };
-		[Type.ExtractInvalidTAttribute]: { error: any };
-		[Type.JustifyMixedContent]: {};
-		[Type.JustifyInvalidTAttribute]: { error: any };
-		[Type.JustifyUnlocalizedText]: {};
-		[Type.JustifyDisallowedTAttribute]: {};
-		[Type.JustifyDisallowedContent]: {};
-		[Type.JustifyDisallowedLocalizedAttribute]: { key: string, name: string };
-		[Type.JustifyWrongPrefix]: { key: string, expectedPrefix: string };
-		[Type.MergeDuplicateKeyOrPath]: { path: string[] };
-		[Type.CompileDuplicateKey]: { key: string };
+		[Type.InvalidJsonData]: { path: string[] };
+		[Type.InvalidJsonPartName]: { path: string[] };
+		[Type.MixedContent]: {};
+		[Type.InvalidTAttribute]: { error: any };
+		[Type.UnlocalizedText]: {};
+		[Type.DisallowedTAttribute]: {};
+		[Type.DisallowedContent]: {};
+		[Type.DisallowedLocalizedAttribute]: { key: string, name: string };
+		[Type.WrongPrefix]: { key: string, expectedPrefix: string };
+		[Type.DuplicateKeyOrPath]: { path: string[] };
+		[Type.DuplicateKey]: { key: string };
+		[Type.OutdatedTranslation]: { key: string, localeId: string };
 	}[T];
 }
 

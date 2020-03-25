@@ -6,6 +6,8 @@
 		"moduleResolution": "Node",
 		"rootDir": "src",
 		"outDir": "dist",
+		"sourceMap": true,
+		"declaration": true,
 		"lib": [
 			"ES2018"
 		]

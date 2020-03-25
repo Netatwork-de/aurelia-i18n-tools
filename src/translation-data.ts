@@ -66,7 +66,7 @@ export class TranslationData {
 					}
 					if (!LocaleData.set(locale, key, content)) {
 						diagnostics.report({
-							type: Diagnostic.Type.CompileDuplicateKey,
+							type: Diagnostic.Type.DuplicateKey,
 							details: { key },
 							filename
 						});
@@ -76,6 +76,12 @@ export class TranslationData {
 				for (const [localeId, translation] of translationSet.translations) {
 					if (translation.lastModified >= translationSet.source.lastModified) {
 						setKey(localeId, translation.content);
+					} else {
+						diagnostics.report({
+							type: Diagnostic.Type.OutdatedTranslation,
+							details: { key, localeId },
+							filename
+						});
 					}
 				}
 			}

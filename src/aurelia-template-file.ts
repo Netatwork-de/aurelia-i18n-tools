@@ -2,7 +2,7 @@ import { parseFragment, DefaultTreeDocumentFragment, DefaultTreeElement } from "
 import { traverseElements, getAttributeValue, analyzeElementContent, treeDiagnostics } from "./utility/parse5-tree";
 import { Config, ConfigLocalizedElement, ElementContentLocalizationType } from "./config";
 import { AureliaI18nAttribute } from "./aurelia-i18n-attribute";
-import { Source, SourceExtractKeysOptions } from "./source";
+import { Source, SourceJustifyKeysOptions, SourceJustifyKeysResult } from "./source";
 import { Diagnostics, Diagnostic } from "./diagnostics";
 
 /**
@@ -11,18 +11,30 @@ import { Diagnostics, Diagnostic } from "./diagnostics";
 export class AureliaTemplateFile implements Source {
 	private constructor(
 		private readonly _filename: string,
-		private readonly _source: string,
-		private readonly _root: DefaultTreeDocumentFragment
+		private _source: string,
+		private _root: DefaultTreeDocumentFragment
 	) {}
 
-	public static parse(filename: string, source: string) {
-		return new AureliaTemplateFile(filename, source, parseFragment(source, {
+	private static parseHtml(source: string) {
+		return parseFragment(source, {
 			scriptingEnabled: false,
 			sourceCodeLocationInfo: true
-		}) as DefaultTreeDocumentFragment);
+		}) as DefaultTreeDocumentFragment;
 	}
 
-	public extractKeys(config: Config, options: SourceExtractKeysOptions, diagnostics: Diagnostics) {
+	public static parse(filename: string, source: string) {
+		return new AureliaTemplateFile(filename, source, AureliaTemplateFile.parseHtml(source));
+	}
+
+	public get filename() {
+		return this._filename;
+	}
+
+	public get source() {
+		return this._source;
+	}
+
+	public extractKeys(config: Config) {
 		const keys = new Map<string, string>();
 		for (const element of traverseElements(this._root, config.ignoreElement)) {
 			const attributeValue = getAttributeValue(element, "t");
@@ -32,67 +44,26 @@ export class AureliaTemplateFile implements Source {
 					for (const [name, key] of attribute) {
 						function add(this: AureliaTemplateFile, key: string, value: string) {
 							if (keys.has(key)) {
-								diagnostics.report({
-									type: Diagnostic.Type.ExtractDuplicateKey,
-									details: { key },
-									filename: this._filename,
-									...treeDiagnostics.attribute(element, "t")
-								});
 							}
 							keys.set(key, value);
 						}
 						if (name === "text" || name === "html") {
-							const { text, hasElements } = analyzeElementContent(element, config.ignoreTextContent);
-							if (hasElements) {
-								diagnostics.report({
-									type: Diagnostic.Type.ExtractInvalidLocalizedContent,
-									details: { key },
-									filename: this._filename,
-									...treeDiagnostics.content(element)
-								});
-							}
+							const { text } = analyzeElementContent(element, config.ignoreTextContent);
 							add.call(this, key, text);
 						} else {
 							const value = getAttributeValue(element, name);
-							if (value === undefined) {
-								diagnostics.report({
-									type: Diagnostic.Type.ExtractMissingAttribute,
-									details: { key, name },
-									filename: this._filename,
-									...treeDiagnostics.startTag(element)
-								});
-							} else if (config.ignoreAttributeValue(value)) {
-								diagnostics.report({
-									type: Diagnostic.Type.ExtractInvalidAttributeValue,
-									details: { key, name },
-									filename: this._filename,
-									...treeDiagnostics.attribute(element, name)
-								})
-							} else {
+							if (value !== undefined && !config.ignoreAttributeValue(value)) {
 								add.call(this, key, value);
 							}
 						}
 					}
-				} catch (error) {
-					diagnostics.report({
-						type: Diagnostic.Type.ExtractInvalidTAttribute,
-						details: { error },
-						filename: this._filename,
-						...treeDiagnostics.attribute(element, "t")
-					});
-				}
+				} catch {}
 			}
 		}
 		return keys;
 	}
 
-	/**
-	 * Justify localization keys in this template
-	 * file and return the updated source code.
-	 * @param config
-	 * @param prefix
-	 */
-	public justifyKeys(config: Config, options: JustifyOptions, diagnostics: Diagnostics) {
+	public justifyKeys(config: Config, { prefix, diagnostics, diagnosticsOnly, isReserved }: SourceJustifyKeysOptions): SourceJustifyKeysResult {
 		const knownKeys = new Set<string>();
 		const candidates: JustificationCandidate[] = [];
 
@@ -103,7 +74,7 @@ export class AureliaTemplateFile implements Source {
 			if (elementConfig) {
 				if (hasText && hasElements) {
 					diagnostics.report({
-						type: Diagnostic.Type.JustifyMixedContent,
+						type: Diagnostic.Type.MixedContent,
 						details: {},
 						filename: this._filename,
 						...treeDiagnostics.content(element)
@@ -119,7 +90,7 @@ export class AureliaTemplateFile implements Source {
 						}
 					} catch (error) {
 						diagnostics.report({
-							type: Diagnostic.Type.JustifyInvalidTAttribute,
+							type: Diagnostic.Type.InvalidTAttribute,
 							details: { error },
 							filename: this._filename,
 							...treeDiagnostics.attribute(element, "t")
@@ -131,14 +102,14 @@ export class AureliaTemplateFile implements Source {
 			} else {
 				if (hasText) {
 					diagnostics.report({
-						type: Diagnostic.Type.JustifyUnlocalizedText,
+						type: Diagnostic.Type.UnlocalizedText,
 						details: {},
 						...treeDiagnostics.content(element)
 					});
 				}
 				if (originalAttributeValue) {
 					diagnostics.report({
-						type: Diagnostic.Type.JustifyDisallowedTAttribute,
+						type: Diagnostic.Type.DisallowedTAttribute,
 						details: {},
 						...treeDiagnostics.startTag(element)
 					});
@@ -148,14 +119,20 @@ export class AureliaTemplateFile implements Source {
 
 		let nextPostfix = 0;
 		const generatedKeys = new Set<string>();
-		function getUniqueKey(key?: string) {
-			if (!key || generatedKeys.has(key)) {
+		const replacedReservedKeys = new Map<string, string>();
+		function getUniqueKey(preferredKey?: string) {
+			let key = preferredKey;
+			const wasReserved = preferredKey && isReserved && isReserved(preferredKey);
+			if (!key || generatedKeys.has(key) || wasReserved) {
 				do {
-					key = `${options.prefix}${nextPostfix++}`;
-				} while (knownKeys.has(key) || options.isReserved && options.isReserved(key));
+					key = `${prefix}${nextPostfix++}`;
+				} while (knownKeys.has(key) || (isReserved && isReserved(key)));
 			}
 			knownKeys.add(key);
 			generatedKeys.add(key);
+			if (wasReserved) {
+				replacedReservedKeys.set(preferredKey!, key);
+			}
 			return key;
 		}
 
@@ -177,7 +154,7 @@ export class AureliaTemplateFile implements Source {
 				}
 				if (hasText || htmlKey || textKey) {
 					diagnostics.report({
-						type: Diagnostic.Type.JustifyDisallowedContent,
+						type: Diagnostic.Type.DisallowedContent,
 						details: {},
 						filename: this._filename,
 						...treeDiagnostics.content
@@ -197,7 +174,7 @@ export class AureliaTemplateFile implements Source {
 				for (const [name, key] of originalAttribute) {
 					if (name !== "text" && name !== "html" && !elementConfig.attributes.has(name)) {
 						diagnostics.report({
-							type: Diagnostic.Type.JustifyDisallowedLocalizedAttribute,
+							type: Diagnostic.Type.DisallowedLocalizedAttribute,
 							details: { key, name },
 							filename: this._filename,
 							...treeDiagnostics.startTag(element)
@@ -205,18 +182,6 @@ export class AureliaTemplateFile implements Source {
 					}
 				}
 			}
-
-			for (const key of knownKeys) {
-				if (!key.startsWith(options.prefix)) {
-					diagnostics.report({
-						type: Diagnostic.Type.JustifyWrongPrefix,
-						details: { key, expectedPrefix: options.prefix },
-						filename: this._filename,
-						...treeDiagnostics.attribute(element, "t")
-					});
-				}
-			}
-
 			const location = element.sourceCodeLocation!;
 			let start = 0, end = 0;
 			if (originalAttribute) {
@@ -238,30 +203,34 @@ export class AureliaTemplateFile implements Source {
 			}
 		}
 
+		for (const key of knownKeys) {
+			if (!key.startsWith(prefix)) {
+				diagnostics.report({
+					type: Diagnostic.Type.WrongPrefix,
+					details: { key, expectedPrefix: prefix },
+					filename: this._filename
+				});
+			}
+		}
+
 		commits.sort((a, b) => a.start - b.start);
 
-		let output = "";
+		let updatedSource = "";
 		let sourcePos = 0;
 		for (const commit of commits) {
-			output += this._source.slice(sourcePos, commit.start);
-			output += commit.replacement;
+			updatedSource += this._source.slice(sourcePos, commit.start);
+			updatedSource += commit.replacement;
 			sourcePos = commit.end;
 		}
-		output += this._source.slice(sourcePos);
-		return output;
-	}
-}
+		updatedSource += this._source.slice(sourcePos);
 
-export interface JustifyOptions {
-	/**
-	 * The prefix to use to new keys.
-	 */
-	readonly prefix: string;
-	/**
-	 * An optional callback to check if the specified i18n key is reserved
-	 * by another file that uses the same prefix for some reason.
-	 */
-	readonly isReserved?: (key: string) => boolean;
+		const modified = this._source !== updatedSource;
+		if (!diagnosticsOnly) {
+			this._source = updatedSource;
+			this._root = AureliaTemplateFile.parseHtml(updatedSource);
+		}
+		return { modified, replacedReservedKeys };
+	}
 }
 
 interface JustificationCandidate {

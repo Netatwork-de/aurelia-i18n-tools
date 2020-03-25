@@ -47,7 +47,7 @@ export namespace LocaleData {
 				if (typeof child === "string") {
 					if (part in to) {
 						diagnostics.report({
-							type: Diagnostic.Type.MergeDuplicateKeyOrPath,
+							type: Diagnostic.Type.DuplicateKeyOrPath,
 							details: { path: path.concat(part) }
 						});
 					} else {
@@ -58,7 +58,7 @@ export namespace LocaleData {
 						const target = to[part];
 						if (typeof target === "string") {
 							diagnostics.report({
-								type: Diagnostic.Type.MergeDuplicateKeyOrPath,
+								type: Diagnostic.Type.DuplicateKeyOrPath,
 								details: { path: path.concat(part) }
 							});
 						} else {

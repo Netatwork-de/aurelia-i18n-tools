@@ -29,7 +29,8 @@ export class JsonResourceFile implements Source {
 				diagnostics.report({
 					type: Diagnostic.Type.InvalidJsonData,
 					details: { path },
-					filename: this._filename
+					filename: this._filename,
+					source: this.source
 				});
 			} else {
 				for (let part in data) {

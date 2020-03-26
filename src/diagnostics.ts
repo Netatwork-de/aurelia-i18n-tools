@@ -4,6 +4,7 @@ export interface Diagnostic<T extends Diagnostic.Type> extends DiagnosticLocatio
 	readonly type: T;
 	readonly details: Diagnostic.Details<T>;
 	readonly filename?: string;
+	readonly source?: string;
 }
 
 export namespace Diagnostic {

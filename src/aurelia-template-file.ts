@@ -77,6 +77,7 @@ export class AureliaTemplateFile implements Source {
 						type: Diagnostic.Type.MixedContent,
 						details: {},
 						filename: this._filename,
+						source: this.source,
 						...treeDiagnostics.content(element)
 					});
 				}
@@ -93,6 +94,7 @@ export class AureliaTemplateFile implements Source {
 							type: Diagnostic.Type.InvalidTAttribute,
 							details: { error },
 							filename: this._filename,
+							source: this.source,
 							...treeDiagnostics.attribute(element, "t")
 						});
 					}
@@ -104,6 +106,8 @@ export class AureliaTemplateFile implements Source {
 					diagnostics.report({
 						type: Diagnostic.Type.UnlocalizedText,
 						details: {},
+						filename: this._filename,
+						source: this.source,
 						...treeDiagnostics.content(element)
 					});
 				}
@@ -111,6 +115,8 @@ export class AureliaTemplateFile implements Source {
 					diagnostics.report({
 						type: Diagnostic.Type.DisallowedTAttribute,
 						details: {},
+						filename: this._filename,
+						source: this.source,
 						...treeDiagnostics.startTag(element)
 					});
 				}
@@ -157,6 +163,7 @@ export class AureliaTemplateFile implements Source {
 						type: Diagnostic.Type.DisallowedContent,
 						details: {},
 						filename: this._filename,
+						source: this.source,
 						...treeDiagnostics.content
 					});
 				}
@@ -177,6 +184,7 @@ export class AureliaTemplateFile implements Source {
 							type: Diagnostic.Type.DisallowedLocalizedAttribute,
 							details: { key, name },
 							filename: this._filename,
+							source: this.source,
 							...treeDiagnostics.startTag(element)
 						});
 					}

@@ -70,6 +70,7 @@ export class Project {
 			this._knownKeys.add(source.filename, key);
 		}
 		this._translationData.updateKeys(source.filename, keys);
+		this._translationDataModified = true;
 	}
 
 	/**
@@ -118,6 +119,7 @@ export class Project {
 				if (result.modified) {
 					for (const [oldKey, newKey] of result.replacedReservedKeys) {
 						this._translationData.replaceKey(filename, oldKey, newKey);
+						this._translationDataModified = true;
 					}
 					this.extractKeys(source, prefix);
 					this._modifiedSources.add(filename);

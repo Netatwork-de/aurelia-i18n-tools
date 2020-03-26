@@ -44,18 +44,6 @@ export class Project {
 		this._translationDataModified = false;
 	}
 
-	/**
-	 * Indicates if the translation data has been modified while processing sources.
-	 * If so, a task runner should write the translation data to disk and set this property to false.
-	 */
-	public get translationDataModified() {
-		return this._translationDataModified;
-	}
-
-	public set translationDataModified(modified: boolean) {
-		this._translationDataModified = Boolean(modified);
-	}
-
 	protected getPrefix(filename: string) {
 		if (/^\.\.($|[\\\/])/.test(path.relative(this.config.src, filename))) {
 			throw new Error(`Filename is outside of the project source directory: ${filename}`);
@@ -128,38 +116,58 @@ export class Project {
 					}
 				});
 				if (result.modified) {
-					if (this.development) {
-						this.extractKeys(source, prefix);
-						// TODO: apply replaced reserved keys to translation data.
-						this._modifiedSources.add(filename);
-					} else {
-						this.diagnostics.report({
-							type: Diagnostic.Type.ModifiedSource,
-							details: {},
-							filename
-						});
+					for (const [oldKey, newKey] of result.replacedReservedKeys) {
+						this._translationData.replaceKey(filename, oldKey, newKey);
 					}
+					this.extractKeys(source, prefix);
+					this._modifiedSources.add(filename);
 				}
 			}
 		}
 	}
 
 	/**
-	 * Iterate through sources that have been modified in memory.
-	 * This should be used by a task runner to write changed sources to disk.
+	 * Handle modified sources and translation data.
+	 *
+	 * This should be called by a task runner after sources have been processed.
+	 *
+	 * In prorudction, no hooks will be invoked and diagnostics
+	 * are reported if anything has been modified.
 	 */
-	public * modifiedSources(): Generator<Source> {
-		for (const filename of this._modifiedSources) {
-			yield this._sources.get(filename)!;
-		}
-	}
+	public async handleModified(hooks: ProjectHandleModifiedHooks) {
+		if (this.development) {
+			const writeTasks: (void | Promise<void>)[] = [];
 
-	/**
-	 * Mark a source as unmodified.
-	 * This should be used by a task runner after the changes have been written to disk.
-	 */
-	public markUnmodified(filename: string) {
-		this._modifiedSources.delete(filename);
+			for (const filename of this._modifiedSources) {
+				this._modifiedSources.delete(filename);
+				if (hooks.writeSource) {
+					writeTasks.push(hooks.writeSource(this._sources.get(filename)!));
+				}
+			}
+
+			if (this._translationDataModified) {
+				this._translationDataModified = false;
+				if (hooks.writeTranslationData) {
+					writeTasks.push(hooks.writeTranslationData(this._translationData));
+				}
+			}
+
+			await Promise.all(writeTasks);
+		} else {
+			for (const filename of this._modifiedSources) {
+				this.diagnostics.report({
+					type: Diagnostic.Type.ModifiedSource,
+					details: {},
+					filename
+				});
+			}
+			if (this._translationDataModified) {
+				this.diagnostics.report({
+					type: Diagnostic.Type.ModifiedTranslation,
+					details: {}
+				});
+			}
+		}
 	}
 
 	/**
@@ -190,4 +198,9 @@ export class Project {
 export interface ProjectOptions {
 	readonly config: Config;
 	readonly development?: boolean;
+}
+
+export interface ProjectHandleModifiedHooks {
+	readonly writeSource?: (source: Source) => void | Promise<void>;
+	readonly writeTranslationData?: (data: TranslationData) => void | Promise<void>;
 }

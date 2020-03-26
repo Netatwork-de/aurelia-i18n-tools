@@ -60,6 +60,6 @@ export interface SourceJustifyKeysOptions {
 export interface SourceJustifyKeysResult {
 	/** true if the source has been modified. */
 	readonly modified: boolean;
-	/** a map of keys that were replaced because they were reserved by another file with the same prefix. */
+	/** A map of old keys to new keys that were replaced because they were reserved by another file. */
 	readonly replacedReservedKeys: Map<string, string>;
 }

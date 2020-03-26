@@ -96,6 +96,25 @@ export class TranslationData {
 	}
 
 	/**
+	 * Replace a key and keep all the translations.
+	 * @param filename The filename.
+	 * @param oldKey The key to replace.
+	 * @param newKey The new key.
+	 * @returns true if the key has been replaced.
+	 */
+	public replaceKey(filename: string, oldKey: string, newKey: string) {
+		const file = this.files.get(filename);
+		if (file) {
+			const translation = file.content.get(oldKey);
+			if (translation) {
+				file.content.set(newKey, translation);
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/**
 	 * Validate and add json data.
 	 * @param json The json data.
 	 * @param basePath The base path for resolving filenames.

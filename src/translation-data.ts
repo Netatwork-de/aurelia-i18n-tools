@@ -169,7 +169,7 @@ export class TranslationData {
 				}
 				content.set(key, { source, translations });
 			}
-			files.set(path.join(basePath, name), { content });
+			files.set(filenameFromJson(basePath, name), { content });
 		}
 		return new TranslationData(files);
 	}
@@ -180,11 +180,17 @@ export class TranslationData {
 	 */
 	public formatJson(basePath: string) {
 		// TODO: Ensure dynamic key sorting.
-		const json: TranslationData.Json = Object.create(null);
-		for (const [filename, file] of this.files) {
+		const json: TranslationData.Json = Object.create(null)
+
+		const sortedFiles = Array.from(this.files)
+			.map<[string, TranslationData.File]>(([filename, file]) => [filenameToJson(basePath, filename), file])
+			.sort(sortByKey);
+
+		for (const [name, file] of sortedFiles) {
 			const fileJson: TranslationData.Json.File = Object.create(null);
 			fileJson.content = Object.create(null);
-			for (const [key, translationSet] of file.content) {
+
+			for (const [key, translationSet] of Array.from(file.content).sort(sortByKey)) {
 				const translationSetJson: TranslationData.Json.TranslationSet = Object.create(null);
 				function formatTranslation(to: TranslationData.Json.Translation, from: TranslationData.Translation) {
 					to.content = from.content;
@@ -193,14 +199,15 @@ export class TranslationData {
 				}
 				formatTranslation(translationSetJson, translationSet.source);
 				translationSetJson.translations = Object.create(null);
-				for (const [locale, translation] of translationSet.translations) {
+
+				for (const [locale, translation] of Array.from(translationSet.translations).sort(sortByKey)) {
 					const translationJson: TranslationData.Json.Translation = Object.create(null);
 					formatTranslation(translationJson, translation);
 					translationSetJson.translations[locale]  = translationJson;
 				}
 				fileJson.content[key] = translationSetJson;
 			}
-			json[path.relative(basePath, filename).replace(/\\/g, "/")] = fileJson;
+			json[name] = fileJson;
 		}
 		return JSON.stringify(json, null, "\t");
 	}
@@ -208,6 +215,18 @@ export class TranslationData {
 
 function isObject(value: any) {
 	return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+function sortByKey<K, V>([a]: [K, V], [b]: [K, V]) {
+	return a < b ? -1 : (a > b ? 1 : 0);
+}
+
+function filenameToJson(basePath: string, filename: string) {
+	return path.relative(basePath, filename).replace(/\\/g, "/");
+}
+
+function filenameFromJson(basePath: string, name: string) {
+	return path.join(basePath, name);
 }
 
 export namespace TranslationData {

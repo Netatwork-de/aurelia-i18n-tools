@@ -19,7 +19,9 @@ export namespace Diagnostic {
 		WrongPrefix = "justify-wrong-prefix",
 		DuplicateKeyOrPath = "merge-duplicate-key-or-path",
 		DuplicateKey = "compile-duplicate-key",
-		OutdatedTranslation = "outdated-translation"
+		OutdatedTranslation = "outdated-translation",
+		ModifiedSource = "modified-source",
+		ModifiedTranslation = "modified-translation"
 	}
 
 	export type Details<T extends Type> = {
@@ -35,6 +37,8 @@ export namespace Diagnostic {
 		[Type.DuplicateKeyOrPath]: { path: string[] };
 		[Type.DuplicateKey]: { key: string };
 		[Type.OutdatedTranslation]: { key: string, localeId: string };
+		[Type.ModifiedSource]: {};
+		[Type.ModifiedTranslation]: {};
 	}[T];
 }
 

@@ -1,4 +1,4 @@
-# I18n Key Justification
+# Template Key Justification
 The following describes how i18n keys are justified in a html source file:
 
 + Traverse the parsed html tree:

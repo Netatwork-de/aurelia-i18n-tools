@@ -2,26 +2,58 @@ import * as path from "path";
 import decamelize = require("decamelize");
 import { Config } from "./config";
 import { Source } from "./source";
-import { Diagnostics } from "./diagnostics";
+import { Diagnostics, Diagnostic } from "./diagnostics";
 import { PairSet } from "./utility/pair-set";
+import { TranslationData } from "./translation-data";
+import { LocaleData } from "./locale-data";
 
 export class Project {
 	public readonly config: Config;
 	public readonly diagnostics = new Diagnostics();
 	public readonly development: boolean;
 
-	// A map of filenames to sources.
+	/** A map of filenames to sources. */
 	private readonly _sources = new Map<string, Source>();
-	// A pair set of filename/key pairs.
+	/** A pair set of filename/key pairs. */
 	private readonly _knownKeys = new PairSet<string, string>();
-	// A set of filenames of sources that have not been justified yet.
+	/** A set of filenames of sources that have not been justified yet. */
 	private readonly _unprocessedSources = new Set<string>();
-	// A set of filenames of sources that have been modified in memory.
+	/** A set of filenames of sources that have been modified in memory. */
 	private readonly _modifiedSources = new Set<string>();
+	/** An array of external locales. */
+	private readonly _externalLocales: { localeId: string, data: LocaleData }[] = [];
+
+	private _translationData = new TranslationData();
+	private _translationDataModified = false;
 
 	public constructor(options: ProjectOptions) {
 		this.config = options.config;
 		this.development = Boolean(options.development);
+	}
+
+	/**
+	 * Get or set translation data.
+	 * A task runner should set this property before processing sources if translation data exists on disk.
+	 */
+	public get translationData() {
+		return this._translationData;
+	}
+
+	public set translationData(data: TranslationData) {
+		this._translationData = data;
+		this._translationDataModified = false;
+	}
+
+	/**
+	 * Indicates if the translation data has been modified while processing sources.
+	 * If so, a task runner should write the translation data to disk and set this property to false.
+	 */
+	public get translationDataModified() {
+		return this._translationDataModified;
+	}
+
+	public set translationDataModified(modified: boolean) {
+		this._translationDataModified = Boolean(modified);
 	}
 
 	protected getPrefix(filename: string) {
@@ -43,36 +75,25 @@ export class Project {
 		return `${this.config.prefix}${decamelize(name, "-")}.t`;
 	}
 
-	protected extractKnownKeys(source: Source, prefix = this.getPrefix(source.filename)) {
+	protected extractKeys(source: Source, prefix = this.getPrefix(source.filename)) {
 		const keys = source.extractKeys(this.config, { prefix, diagnostics: this.diagnostics });
 		this._knownKeys.deleteKey(source.filename);
 		for (const key of keys.keys()) {
 			this._knownKeys.add(source.filename, key);
 		}
+		this._translationData.updateKeys(source.filename, keys);
 	}
-
-	// Workflow in production:
-	// - All sources are added and keys are extracted.
-	// - All sources are justified for diagnostics only.
-	//   (Additional diagnostic is raised if source would have been modified)
-	// - Translation data is compiled.
-	//   (Additional diagnostic is raised if translation data would have been modified)
-	// - Compiled translations are merged with translations from external packages.
-
-	// Workflow in development:
-	// - All (or changed) sources are added and keys are extracted.
-	// - All (or changed) sources are justified.
-	// - Changed sources are written to disk.
-	// - Translation data is compiled and written to disk.
-	// - Compiled translations are merged with translations from external packages.
 
 	/**
 	 * Should be called by a task runner to update or add a source file.
 	 */
 	public updateSource(source: Source) {
+		const oldSource = this._sources.get(source.filename);
 		this._sources.set(source.filename, source);
-		this._unprocessedSources.add(source.filename);
-		this.extractKnownKeys(source);
+		if (!oldSource || oldSource.source !== source.source) {
+			this._unprocessedSources.add(source.filename);
+			this.extractKeys(source);
+		}
 	}
 
 	/**
@@ -108,11 +129,15 @@ export class Project {
 				});
 				if (result.modified) {
 					if (this.development) {
-						this.extractKnownKeys(source, prefix);
-						// TODO: If translation data is available, apply replaced reserved keys.
+						this.extractKeys(source, prefix);
+						// TODO: apply replaced reserved keys to translation data.
 						this._modifiedSources.add(filename);
 					} else {
-						// TODO: Report that source should have been justified in development.
+						this.diagnostics.report({
+							type: Diagnostic.Type.ModifiedSource,
+							details: {},
+							filename
+						});
 					}
 				}
 			}
@@ -135,6 +160,30 @@ export class Project {
 	 */
 	public markUnmodified(filename: string) {
 		this._modifiedSources.delete(filename);
+	}
+
+	/**
+	 * Add external locale data.
+	 */
+	public addExternalLocale(localeId: string, data: LocaleData) {
+		this._externalLocales.push({ localeId, data });
+	}
+
+	/**
+	 * Compile translation data and external locales.
+	 * @returns A map of locale ids to compiled locale data.
+	 */
+	public compileLocales() {
+		const locales = this._translationData.compile(this.config, this.diagnostics);
+		for (const { localeId, data } of this._externalLocales) {
+			const target = locales.get(localeId);
+			if (target) {
+				LocaleData.merge(target, data, this.diagnostics);
+			} else {
+				locales.set(localeId, data);
+			}
+		}
+		return locales;
 	}
 }
 

@@ -1,4 +1,4 @@
-# I18n Json Data
+# Json Translation Data
 In every localized project, an `i18n.json` file is used to store all translations.
 This file can then be modified by external tools to localize an application.
 

@@ -17,8 +17,10 @@ export class TranslationData {
 	 * Update extracted keys and delete missing ones.
 	 * @param filename The filename.
 	 * @param keys A map of i18n keys to english translations.
+	 * @returns true if anything has been modified.
 	 */
 	public updateKeys(filename: string, keys: Map<string, string>) {
+		let modified = false;
 		let file = this.files.get(filename);
 		if (!file) {
 			file = { content: new Map() };
@@ -30,6 +32,7 @@ export class TranslationData {
 				if (translation.source.content !== content) {
 					translation.source.content = content;
 					translation.source.lastModified = Date.now();
+					modified = true;
 				}
 			} else {
 				file.content.set(key, {
@@ -40,13 +43,16 @@ export class TranslationData {
 					},
 					translations: new Map()
 				});
+				modified = true;
 			}
 		}
 		for (const key of file.content.keys()) {
 			if (!keys.has(key)) {
 				file.content.delete(key);
+				modified = true;
 			}
 		}
+		return modified;
 	}
 
 	/**
@@ -154,6 +160,7 @@ export class TranslationData {
 	 * @param basePath The base path for creating relative filenames.
 	 */
 	public formatJson(basePath: string) {
+		// TODO: Ensure dynamic key sorting.
 		const json: TranslationData.Json = Object.create(null);
 		for (const [filename, file] of this.files) {
 			const fileJson: TranslationData.Json.File = Object.create(null);

@@ -1,3 +1,4 @@
+export * from "./gulp";
 export * from "./aurelia-i18n-attribute";
 export * from "./aurelia-template-file";
 export * from "./config";

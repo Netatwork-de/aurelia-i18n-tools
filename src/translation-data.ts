@@ -92,6 +92,21 @@ export class TranslationData {
 				}
 			}
 		}
+		const additionalLocales = new Set(locales.keys());
+		additionalLocales.delete(config.sourceLocaleId);
+		for (const [filename, file] of this.files) {
+			for (const [key, translationSet] of file.content) {
+				for (const localeId of additionalLocales) {
+					if (!translationSet.translations.has(localeId)) {
+						diagnostics.report({
+							type: Diagnostic.Type.MissingTranslation,
+							details: { key, localeId },
+							filename
+						});
+					}
+				}
+			}
+		}
 		return locales;
 	}
 
@@ -179,7 +194,6 @@ export class TranslationData {
 	 * @param basePath The base path for creating relative filenames.
 	 */
 	public formatJson(basePath: string) {
-		// TODO: Ensure dynamic key sorting.
 		const json: TranslationData.Json = Object.create(null)
 
 		const sortedFiles = Array.from(this.files)

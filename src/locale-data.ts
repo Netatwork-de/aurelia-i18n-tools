@@ -38,6 +38,23 @@ export namespace LocaleData {
 	}
 
 	/**
+	 * Check if the specified object represents valid locale data.
+	 * @param data Data to validate.
+	 */
+	export function validate(data: LocaleData) {
+		if (data === null || typeof data !== "object" || Array.isArray(data)) {
+			return false;
+		}
+		for (const part in data) {
+			const child = data[part];
+			if (typeof child !== "string" && !validate(child)) {
+				return false;
+			}
+		}
+		return true;
+	}
+
+	/**
 	 * Merge a source locale data into the target locale data.
 	 */
 	export function merge(target: LocaleData, source: LocaleData, diagnostics: Diagnostics) {

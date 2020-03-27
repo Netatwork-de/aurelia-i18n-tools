@@ -3,7 +3,7 @@ import { traverseElements, getAttributeValue, analyzeElementContent, treeDiagnos
 import { Config, ConfigLocalizedElement, ElementContentLocalizationType } from "./config";
 import { AureliaI18nAttribute } from "./aurelia-i18n-attribute";
 import { Source, SourceJustifyKeysOptions, SourceJustifyKeysResult } from "./source";
-import { Diagnostics, Diagnostic } from "./diagnostics";
+import { Diagnostic } from "./diagnostics";
 
 /**
  * Represents a localized aurelia template file.
@@ -38,7 +38,7 @@ export class AureliaTemplateFile implements Source {
 		const keys = new Map<string, string>();
 		for (const element of traverseElements(this._root, config.ignoreElement)) {
 			const attributeValue = getAttributeValue(element, "t");
-			if (attributeValue) {
+			if (attributeValue !== undefined) {
 				try {
 					const attribute = AureliaI18nAttribute.parse(attributeValue);
 					for (const [name, key] of attribute) {
@@ -83,7 +83,7 @@ export class AureliaTemplateFile implements Source {
 				}
 
 				let originalAttribute: AureliaI18nAttribute | undefined;
-				if (originalAttributeValue) {
+				if (originalAttributeValue !== undefined) {
 					try {
 						originalAttribute = AureliaI18nAttribute.parse(originalAttributeValue);
 						for (const key of originalAttribute.keys()) {

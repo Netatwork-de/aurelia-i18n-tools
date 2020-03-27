@@ -2,7 +2,7 @@ import * as path from "path";
 import decamelize = require("decamelize");
 import { Config } from "./config";
 import { Source } from "./source";
-import { Diagnostics, Diagnostic } from "./diagnostics";
+import { Diagnostics, Diagnostic, DiagnosticFormatter } from "./diagnostics";
 import { PairSet } from "./utility/pair-set";
 import { TranslationData } from "./translation-data";
 import { LocaleData } from "./locale-data";
@@ -10,6 +10,7 @@ import { LocaleData } from "./locale-data";
 export class Project {
 	public readonly config: Config;
 	public readonly diagnostics = new Diagnostics();
+	public readonly diagnosticFormatter = new DiagnosticFormatter();
 	public readonly development: boolean;
 
 	/** A map of filenames to sources. */
@@ -69,8 +70,9 @@ export class Project {
 		for (const key of keys.keys()) {
 			this._knownKeys.add(source.filename, key);
 		}
-		this._translationData.updateKeys(source.filename, keys);
-		this._translationDataModified = true;
+		if (this._translationData.updateKeys(source.filename, keys)) {
+			this._translationDataModified = true;
+		}
 	}
 
 	/**
@@ -118,12 +120,18 @@ export class Project {
 				});
 				if (result.modified) {
 					for (const [oldKey, newKey] of result.replacedReservedKeys) {
-						this._translationData.replaceKey(filename, oldKey, newKey);
-						this._translationDataModified = true;
+						if (this._translationData.replaceKey(filename, oldKey, newKey)) {
+							this._translationDataModified = true;
+						}
 					}
 					this.extractKeys(source, prefix);
 					this._modifiedSources.add(filename);
 				}
+			}
+		}
+		for (const filename of this._translationData.files.keys()) {
+			if (!this._sources.has(filename)) {
+				this._translationData.files.delete(filename);
 			}
 		}
 	}

@@ -8,6 +8,7 @@
 		"outDir": "dist",
 		"sourceMap": true,
 		"declaration": true,
+		"removeComments": true,
 		"lib": [
 			"ES2018"
 		]

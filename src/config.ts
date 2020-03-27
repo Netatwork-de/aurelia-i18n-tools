@@ -89,7 +89,7 @@ const ELEMENT_CONTENT_LOCALIZATION_TYPES = new Set<ElementContentLocalizationTyp
  * @param context Absolute path of the project root directory.
  * @param options The config json data.
  */
-export function createConfig(context: string, options: ConfigOptions): Config {
+export function createConfig(context: string, options: ConfigOptions = {}): Config {
 	type IgnoreCallback = (value: string) => boolean;
 
 	function containsInterpolation(value: string) {

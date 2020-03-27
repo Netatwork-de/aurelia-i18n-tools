@@ -64,8 +64,9 @@ export function createGulpI18n(): GulpI18n {
 
 		if (!externalLocalesAdded && options.externalLocales) {
 			externalLocalesAdded = true;
-			for (const localeId in options.externalLocales) {
-				const from = options.externalLocales[localeId];
+			const externalLocales = options.externalLocales();
+			for (const localeId in externalLocales) {
+				const from = externalLocales[localeId];
 				tasks.push(new Promise<void>((resolve, reject) => {
 					from.on("error", reject);
 					from.on("end", resolve);
@@ -129,7 +130,7 @@ export interface GulpI18nOptions {
 	aureliaTemplateFiles?: NodeJS.ReadableStream;
 	jsonResourceFiles?: NodeJS.ReadableStream;
 	localeFilename?: string;
-	externalLocales?: Record<string, NodeJS.ReadableStream>;
+	externalLocales?: () => Record<string, NodeJS.ReadableStream>;
 	writeSources?: () => NodeJS.WritableStream;
 	writeLocales?: () => NodeJS.WritableStream;
 }

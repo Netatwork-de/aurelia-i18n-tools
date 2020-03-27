@@ -10,6 +10,8 @@ import { TranslationData } from "../translation-data";
 import { LocaleData } from "../locale-data";
 
 export function createGulpI18n(): GulpI18n {
+	const Vinyl = require("vinyl") as typeof import("vinyl");
+
 	let project: Project | undefined = undefined;
 	let externalLocalesAdded = false;
 

@@ -1,5 +1,4 @@
 import * as path from "path";
-import decamelize = require("decamelize");
 import { Config } from "./config";
 import { Source } from "./source";
 import { Diagnostics, Diagnostic, DiagnosticFormatter } from "./diagnostics";
@@ -53,15 +52,22 @@ export class Project {
 		const ext = path.extname(filename);
 		const name = path.basename(filename, ext);
 
+		function sanitizeName(value: string) {
+			return value
+				.replace(/([a-z0-9])([A-Z])/g, "$1-$2")
+				.replace(/[^a-zA-Z0-9]+/, "-")
+				.toLowerCase();
+		}
+
 		// Use the name of the directory as prefix if this is an index file not at the project root:
 		if (name === "index") {
 			const dirname = path.dirname(filename);
 			if (dirname.length > this.config.src.length) {
-				return `${this.config.prefix}${decamelize(path.basename(dirname), "-")}.t`;
+				return `${this.config.prefix}${sanitizeName(path.basename(dirname))}.t`;
 			}
 		}
 
-		return `${this.config.prefix}${decamelize(name, "-")}.t`;
+		return `${this.config.prefix}${sanitizeName(name)}.t`;
 	}
 
 	protected extractKeys(source: Source, prefix = this.getPrefix(source.filename)) {

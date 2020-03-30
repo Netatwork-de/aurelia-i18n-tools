@@ -88,7 +88,9 @@ export function createGulpI18n(): GulpI18n {
 
 		await Promise.all<void>(tasks);
 
-		project.processSources();
+		project.processSources({
+			enforcePrefix: options.enforcePrefix
+		});
 
 		const writeSources = options.writeSources && options.writeSources();
 		await project.handleModified({
@@ -125,6 +127,8 @@ export type GulpI18n = (options: GulpI18nOptions) => Promise<void>;
 export interface GulpI18nOptions {
 	config: Config;
 	development: boolean;
+
+	enforcePrefix?: boolean;
 
 	translationDataPath?: string;
 	aureliaTemplateFiles?: NodeJS.ReadableStream;

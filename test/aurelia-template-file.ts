@@ -1,6 +1,6 @@
 import test from "ava";
 import * as path from "path";
-import { AureliaTemplateFile, createConfig, ElementContentLocalizationType, Diagnostic } from "../src";
+import { AureliaTemplateFile, createConfig, ElementContentLocalizationType, Diagnostic, Diagnostics } from "../src";
 import { expectNoDiagnostics, code, captureDiagnostics } from "./_utility";
 
 const filename = path.join(__dirname, "template.html");
@@ -23,7 +23,7 @@ test("allocate new keys", t => {
 		diagnostics: expectNoDiagnostics(t)
 	});
 	t.true(result.modified);
-	t.is(result.replacedReservedKeys.size, 0);
+	t.is(result.replacedKeys.size, 0);
 	t.is(source.source, code(`
 		<div foo="bar" t="test.t0;[foo]test.t1">content</div>
 	`));
@@ -38,7 +38,7 @@ test("reuse existing keys", t => {
 		diagnostics: expectNoDiagnostics(t)
 	});
 	t.true(result.modified);
-	t.is(result.replacedReservedKeys.size, 0);
+	t.is(result.replacedKeys.size, 0);
 	t.is(source.source, code(`
 		<div foo="bar" t="test.t7;[foo]test.t0">content</div>
 	`));
@@ -54,7 +54,7 @@ test("replace duplicate keys", t => {
 		diagnostics: expectNoDiagnostics(t)
 	});
 	t.true(result.modified);
-	t.is(result.replacedReservedKeys.size, 0);
+	t.is(result.replacedKeys.size, 0);
 	t.is(source.source, code(`
 		<div t="test.t7">content</div>
 		<div t="test.t0">content</div>
@@ -71,8 +71,25 @@ test("replace reserved keys", t => {
 		isReserved: k => k === "test.t7"
 	});
 	t.true(result.modified);
-	t.is(result.replacedReservedKeys.size, 1);
-	t.is(result.replacedReservedKeys.get("test.t7"), "test.t0");
+	t.is(result.replacedKeys.size, 1);
+	t.deepEqual(result.replacedKeys.get("test.t7"), new Set(["test.t0"]));
+	t.is(source.source, code(`
+		<div t="test.t0">content</div>
+	`));
+});
+
+test("replace keys with wrong prefixes", t => {
+	const source = AureliaTemplateFile.parse(filename, code(`
+		<div t="foo.t7">content</div>
+	`));
+	const result = source.justifyKeys(config, {
+		prefix: "test.t",
+		diagnostics: expectNoDiagnostics(t),
+		enforcePrefix: true
+	});
+	t.true(result.modified);
+	t.is(result.replacedKeys.size, 1);
+	t.deepEqual(result.replacedKeys.get("foo.t7"), new Set(["test.t0"]));
 	t.is(source.source, code(`
 		<div t="test.t0">content</div>
 	`));

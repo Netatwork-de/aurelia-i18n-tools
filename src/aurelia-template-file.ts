@@ -63,7 +63,7 @@ export class AureliaTemplateFile implements Source {
 		return keys;
 	}
 
-	public justifyKeys(config: Config, { prefix, diagnostics, diagnosticsOnly, isReserved }: SourceJustifyKeysOptions): SourceJustifyKeysResult {
+	public justifyKeys(config: Config, { prefix, diagnostics, diagnosticsOnly, isReserved, enforcePrefix }: SourceJustifyKeysOptions): SourceJustifyKeysResult {
 		const knownKeys = new Set<string>();
 		const candidates: JustificationCandidate[] = [];
 
@@ -125,19 +125,28 @@ export class AureliaTemplateFile implements Source {
 
 		let nextPostfix = 0;
 		const generatedKeys = new Set<string>();
-		const replacedReservedKeys = new Map<string, string>();
+		const replacedKeys = new Map<string, Set<string>>();
 		function getUniqueKey(preferredKey?: string) {
 			let key = preferredKey;
-			const wasReserved = preferredKey && isReserved && isReserved(preferredKey);
-			if (!key || generatedKeys.has(key) || wasReserved) {
+			function mustBeReplaced(key: string) {
+				return (enforcePrefix && !key.startsWith(prefix))
+					|| (isReserved && isReserved(key));
+			}
+			const replace = preferredKey && mustBeReplaced(preferredKey);
+			if (!key || generatedKeys.has(key) || replace) {
 				do {
 					key = `${prefix}${nextPostfix++}`;
-				} while (knownKeys.has(key) || (isReserved && isReserved(key)));
+				} while (knownKeys.has(key) || mustBeReplaced(key));
 			}
 			knownKeys.add(key);
 			generatedKeys.add(key);
-			if (wasReserved) {
-				replacedReservedKeys.set(preferredKey!, key);
+			if (replace) {
+				const keys = replacedKeys.get(preferredKey!);
+				if (keys) {
+					keys.add(key);
+				} else {
+					replacedKeys.set(preferredKey!, new Set([key]));
+				}
 			}
 			return key;
 		}
@@ -212,7 +221,7 @@ export class AureliaTemplateFile implements Source {
 		}
 
 		for (const key of knownKeys) {
-			if (!key.startsWith(prefix)) {
+			if (!replacedKeys.has(key) && !key.startsWith(prefix)) {
 				diagnostics.report({
 					type: Diagnostic.Type.WrongPrefix,
 					details: { key, expectedPrefix: prefix },
@@ -237,7 +246,7 @@ export class AureliaTemplateFile implements Source {
 			this._source = updatedSource;
 			this._root = AureliaTemplateFile.parseHtml(updatedSource);
 		}
-		return { modified, replacedReservedKeys };
+		return { modified, replacedKeys };
 	}
 }
 

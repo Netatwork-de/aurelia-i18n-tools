@@ -55,11 +55,15 @@ export interface SourceJustifyKeysOptions {
 	 * by another file that uses the same prefix for some reason.
 	 */
 	readonly isReserved?: (key: string) => boolean;
+	/**
+	 * If true, keys not starting with the specified prefix are replaced.
+	 */
+	readonly enforcePrefix?: boolean;
 }
 
 export interface SourceJustifyKeysResult {
 	/** true if the source has been modified. */
 	readonly modified: boolean;
-	/** A map of old keys to new keys that were replaced because they were reserved by another file. */
-	readonly replacedReservedKeys: Map<string, string>;
+	/** A map of old keys to new keys that were replaced. */
+	readonly replacedKeys: Map<string, Set<string>>;
 }

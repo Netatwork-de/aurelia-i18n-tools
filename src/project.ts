@@ -106,7 +106,7 @@ export class Project {
 	/**
 	 * Should be called by a task runner to process updated sources.
 	 */
-	public processSources() {
+	public processSources(options: ProjectProcessSourcesOptions = {}) {
 		for (const filename of this._unprocessedSources) {
 			this._unprocessedSources.delete(filename);
 			const source = this._sources.get(filename)!;
@@ -122,12 +122,15 @@ export class Project {
 							return filenames.size > (filenames.has(filename) ? 1 : 0);
 						}
 						return false;
-					}
+					},
+					enforcePrefix: options.enforcePrefix
 				});
 				if (result.modified) {
-					for (const [oldKey, newKey] of result.replacedReservedKeys) {
-						if (this._translationData.replaceKey(filename, oldKey, newKey)) {
-							this._translationDataModified = true;
+					for (const [oldKey, newKeys] of result.replacedKeys) {
+						for (const newKey of newKeys) {
+							if (this._translationData.copyKey(filename, oldKey, newKey)) {
+								this._translationDataModified = true;
+							}
 						}
 					}
 					this.extractKeys(source, prefix);
@@ -212,8 +215,15 @@ export class Project {
 }
 
 export interface ProjectOptions {
+	/** The project config. */
 	readonly config: Config;
+	/** True, to use the development workflow. */
 	readonly development?: boolean;
+}
+
+export interface ProjectProcessSourcesOptions {
+	/** If true, keys not starting with the specified prefix are replaced. */
+	readonly enforcePrefix?: boolean;
 }
 
 export interface ProjectHandleModifiedHooks {

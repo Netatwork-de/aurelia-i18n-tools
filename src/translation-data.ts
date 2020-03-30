@@ -117,7 +117,7 @@ export class TranslationData {
 	 * @param newKey The new key.
 	 * @returns true if the key has been replaced.
 	 */
-	public replaceKey(filename: string, oldKey: string, newKey: string) {
+	public copyKey(filename: string, oldKey: string, newKey: string) {
 		const file = this.files.get(filename);
 		if (file) {
 			const translation = file.content.get(oldKey);

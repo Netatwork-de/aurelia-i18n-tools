@@ -46,6 +46,24 @@ export namespace Diagnostic {
 		[Type.ModifiedSource]: {};
 		[Type.ModifiedTranslation]: {};
 	}[T];
+
+	export const TYPES = new Set<Type>([
+		Type.InvalidJsonData,
+		Type.InvalidJsonPartName,
+		Type.MixedContent,
+		Type.InvalidTAttribute,
+		Type.UnlocalizedText,
+		Type.DisallowedTAttribute,
+		Type.DisallowedContent,
+		Type.DisallowedLocalizedAttribute,
+		Type.WrongPrefix,
+		Type.DuplicateKeyOrPath,
+		Type.DuplicateKey,
+		Type.OutdatedTranslation,
+		Type.MissingTranslation,
+		Type.ModifiedSource,
+		Type.ModifiedTranslation
+	]);
 }
 
 export interface DiagnosticLocation {

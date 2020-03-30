@@ -27,10 +27,14 @@ const config = createConfig(context, options);
             + `"text"` - Content is localized as text.
             + `"html"` - Content is localized as html.
         + attributes `<string[]>` - An array of attribute names that can be localized.
+    + diagnostics `<object>` - An object to specify how diagnostics should handled.
+        + all `<HandlingType>` - A fallback value for unconfigured types. Default is `"warn"`.
+        + *[Diagnostic.Type]* `<HandlingType>` - Specify how specific diagnostics are handled.
+        + `HandlingType` can be `"error"`, `"warn"` or `"ignore"`.
 
 An example configuration could look like this:
 ```ts
-import { createConfig, ElementContentLocalizationType } from "@netatwork/aurelia-i18n-tools";
+import { createConfig, ElementContentLocalizationType, Diagnostic, Config } from "@netatwork/aurelia-i18n-tools";
 
 createConfig(__dirname, {
     src: "src",
@@ -43,6 +47,10 @@ createConfig(__dirname, {
         img: {
             attributes: ["alt"]
         }
+    },
+    diagnostics: {
+        all: Config.DiagnosticHandling.Error,
+        [Diagnostic.Type.MixedContent]: Config.DiagnosticHandling.Ignore
     }
 });
 ```

@@ -16,6 +16,7 @@ export function createGulpI18n(): GulpI18n {
 	let externalLocalesAdded = false;
 
 	return async (options: GulpI18nOptions) => {
+		let hasErrors = false;
 		if (project) {
 			if (project.config !== options.config || project.development !== options.development) {
 				throw new TypeError("options.config and options.development must be the same in every task run.");
@@ -27,7 +28,13 @@ export function createGulpI18n(): GulpI18n {
 			});
 
 			project.diagnostics.on("report", diagnostic => {
-				console.log(project?.diagnosticFormatter.format(diagnostic));
+				const handling = options.config.getDiagnosticHandling(diagnostic.type)
+				if (handling === Config.DiagnosticHandling.Error) {
+					hasErrors = true;
+				}
+				if (handling !== Config.DiagnosticHandling.Ignore) {
+					console.log(project?.diagnosticFormatter.format(diagnostic));
+				}
 			});
 		}
 
@@ -118,6 +125,10 @@ export function createGulpI18n(): GulpI18n {
 					contents: Buffer.from(JSON.stringify(data))
 				}));
 			}
+		}
+
+		if (hasErrors && !options.development) {
+			throw new Error(`One or more errors occured.`);
 		}
 	};
 }

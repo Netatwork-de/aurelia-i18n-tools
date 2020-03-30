@@ -128,7 +128,8 @@ export class Project {
 				if (result.modified) {
 					for (const [oldKey, newKeys] of result.replacedKeys) {
 						for (const newKey of newKeys) {
-							if (this._translationData.copyKey(filename, oldKey, newKey)) {
+							const hintFilenames = this._knownKeys.getKeys(oldKey);
+							if (this._translationData.copyTranslations(filename, oldKey, newKey, hintFilenames)) {
 								this._translationDataModified = true;
 							}
 						}

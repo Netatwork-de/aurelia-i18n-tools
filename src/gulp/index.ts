@@ -31,7 +31,7 @@ export function createGulpI18n(): GulpI18n {
 			});
 		}
 
-		const translationDataPath = options.translationDataPath || path.join(options.config.context, "i18n.json");
+		const translationDataPath = path.resolve(options.config.context, options.translationDataPath || "i18n.json");
 		try {
 			const translationData = await fs.readFile(translationDataPath, "utf8");
 			project.translationData = TranslationData.parse(translationData, path.dirname(translationDataPath));

@@ -207,7 +207,7 @@ export class Project {
 			if (target) {
 				LocaleData.merge(target, data, this.diagnostics);
 			} else {
-				locales.set(localeId, data);
+				locales.set(localeId, LocaleData.clone(data));
 			}
 		}
 		return locales;

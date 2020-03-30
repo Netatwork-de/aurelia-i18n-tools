@@ -1,6 +1,6 @@
 import { parseFragment, DefaultTreeDocumentFragment, DefaultTreeElement } from "parse5";
 import { traverseElements, getAttributeValue, analyzeElementContent, treeDiagnostics } from "./utility/parse5-tree";
-import { Config, ConfigLocalizedElement, ElementContentLocalizationType } from "./config";
+import { Config, ElementContentLocalizationType } from "./config";
 import { AureliaI18nAttribute } from "./aurelia-i18n-attribute";
 import { Source, SourceJustifyKeysOptions, SourceJustifyKeysResult } from "./source";
 import { Diagnostic } from "./diagnostics";
@@ -252,7 +252,7 @@ export class AureliaTemplateFile implements Source {
 
 interface JustificationCandidate {
 	readonly element: DefaultTreeElement;
-	readonly elementConfig: ConfigLocalizedElement;
+	readonly elementConfig: Config.LocalizedElement;
 	readonly originalAttribute?: AureliaI18nAttribute;
 	readonly hasText: boolean;
 }

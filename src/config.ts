@@ -1,4 +1,5 @@
 import * as path from "path";
+import { Diagnostic } from "./diagnostics";
 
 export interface ConfigOptions {
 	/**
@@ -25,11 +26,11 @@ export interface ConfigOptions {
 	 */
 	ignore?: {
 		/** Ignore elements and subtrees by tag name */
-		element?: ConfigOptionsIgnoreRule
+		element?: ConfigOptions.IgnoreRule
 		/** Ignore text content */
-		textContent?: ConfigOptionsIgnoreRule
+		textContent?: ConfigOptions.IgnoreRule
 		/** Ignore attribute values */
-		attributeValue?: ConfigOptionsIgnoreRule
+		attributeValue?: ConfigOptions.IgnoreRule
 	}[];
 
 	/**
@@ -48,9 +49,18 @@ export interface ConfigOptions {
 		 */
 		attributes?: string[];
 	}>;
+
+	/**
+	 * Configure how diagnostics are handled.
+	 */
+	diagnostics?: {
+		[t in Diagnostic.Type | "all"]?: Config.DiagnosticHandling;
+	};
 }
 
-export type ConfigOptionsIgnoreRule = string | RegExp | ((value: string) => boolean);
+export namespace ConfigOptions {
+	export type IgnoreRule = string | RegExp | ((value: string) => boolean);
+}
 
 export interface Config {
 	/** Absolute path of the project root directory */
@@ -68,13 +78,25 @@ export interface Config {
 	/** A function that is called to check if an attribute should be ignored. */
 	ignoreAttributeValue: (name: string) => boolean;
 	/** A map of localized tags. */
-	localizedElements: ReadonlyMap<string, ConfigLocalizedElement>;
+	localizedElements: ReadonlyMap<string, Config.LocalizedElement>;
+	/** A function that is used to determine how a specific diagnostic type is handled. */
+	getDiagnosticHandling: (type: Diagnostic.Type) => Config.DiagnosticHandling;
 }
 
-export interface ConfigLocalizedElement {
-	readonly content: ElementContentLocalizationType;
-	readonly attributes: ReadonlySet<string>;
+export namespace Config {
+	export enum DiagnosticHandling { Error = "error", Warning = "warn", Ignore = "ignore" }
+
+	export interface LocalizedElement {
+		readonly content: ElementContentLocalizationType;
+		readonly attributes: ReadonlySet<string>;
+	}
 }
+
+const DIAGNOSTIC_HANDLING_TYPES = new Set<Config.DiagnosticHandling>([
+	Config.DiagnosticHandling.Error,
+	Config.DiagnosticHandling.Warning,
+	Config.DiagnosticHandling.Ignore
+]);
 
 export enum ElementContentLocalizationType { None = "none", Html = "html", Text = "text" }
 
@@ -100,7 +122,7 @@ export function createConfig(context: string, options: ConfigOptions = {}): Conf
 	const ignoreTextContent: IgnoreCallback[] = [containsInterpolation];
 	const ignoreAttributeValue: IgnoreCallback[] = [containsInterpolation];
 
-	function convertIgnoreRule(rule: ConfigOptionsIgnoreRule) {
+	function convertIgnoreRule(rule: ConfigOptions.IgnoreRule) {
 		if (typeof rule === "string") {
 			const regexp = new RegExp(rule);
 			return (value: string) => regexp.test(value);
@@ -131,7 +153,7 @@ export function createConfig(context: string, options: ConfigOptions = {}): Conf
 		}
 	}
 
-	const localizedElements = new Map<string, ConfigLocalizedElement>();
+	const localizedElements = new Map<string, Config.LocalizedElement>();
 	if (options.localize) {
 		for (const tagName in options.localize) {
 			const item = options.localize[tagName];
@@ -144,7 +166,7 @@ export function createConfig(context: string, options: ConfigOptions = {}): Conf
 			localizedElements.set(tagName, {
 				content: item.content || ElementContentLocalizationType.None,
 				attributes: new Set(item.attributes || [])
-			})
+			});
 		}
 	}
 
@@ -155,6 +177,25 @@ export function createConfig(context: string, options: ConfigOptions = {}): Conf
 		throw new TypeError(`sourceLocale must be a string.`);
 	}
 
+	const diagnosticHandlingFallback = options.diagnostics?.all || Config.DiagnosticHandling.Warning;
+	if (!DIAGNOSTIC_HANDLING_TYPES.has(diagnosticHandlingFallback)) {
+		throw new TypeError(`diagnostics.all must be "error", "warn" or "ignore".`);
+	}
+
+	const diagnosticHandling = new Map<Diagnostic.Type, Config.DiagnosticHandling>();
+	for (const key in options.diagnostics || {}) {
+		if (key !== "all") {
+			if (!Diagnostic.TYPES.has(key as Diagnostic.Type)) {
+				throw new TypeError(`invalid diagnostic type: ${key}`);
+			}
+			const type = options.diagnostics![key as Diagnostic.Type]!;
+			if (!DIAGNOSTIC_HANDLING_TYPES.has(type)) {
+				throw new TypeError(`diagnostics["${key}"] must be "error", "warn" or "ignore".`);
+			}
+			diagnosticHandling.set(key as Diagnostic.Type, type);
+		}
+	}
+
 	return {
 		context,
 		src: path.resolve(context, options.src || "./src"),
@@ -163,6 +204,7 @@ export function createConfig(context: string, options: ConfigOptions = {}): Conf
 		ignoreElement: createIgnoreFunction(ignoreElements),
 		ignoreTextContent: createIgnoreFunction(ignoreTextContent),
 		ignoreAttributeValue: createIgnoreFunction(ignoreAttributeValue),
-		localizedElements
-	}
+		localizedElements,
+		getDiagnosticHandling: type => diagnosticHandling.get(type) || diagnosticHandlingFallback
+	};
 }

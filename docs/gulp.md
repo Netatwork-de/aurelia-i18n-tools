@@ -51,6 +51,7 @@ gulp.task("watch-i18n", gulp.series(watch, () => gulp.watch("src/**/*", watch)))
 ```
 + config `<Config>` - The [project config](config.md) instance. (This option must be the same for every run)
 + development `<boolean>` - If true, the development workflow is used. (This option must be the same for every run)
+    + Note that the task will throw an error if any error occurs in production.
 + enforcePrefix `<boolean>` - If true, keys not starting with the correct prefix are replaced. Default is `false`
 + aureliaTemplateFiles `<Readable>` - A stream of aurelia template files.
 + jsonResourceFiles `<Readable>` - A stream of json resource files.

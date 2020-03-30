@@ -138,8 +138,8 @@ export class Project {
 				}
 			}
 		}
-		for (const filename of this._translationData.files.keys()) {
-			if (!this._sources.has(filename)) {
+		for (const [filename, file] of this._translationData.files) {
+			if (!this._sources.has(filename) || file.content.size === 0) {
 				this._translationData.files.delete(filename);
 			}
 		}

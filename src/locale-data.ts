@@ -90,6 +90,13 @@ export namespace LocaleData {
 	}
 
 	/**
+	 * Clone locale data.
+	 */
+	export function clone(data: LocaleData) {
+		return JSON.parse(JSON.stringify(data));
+	}
+
+	/**
 	 * Combine locale data objects.
 	 * @param sources The objects to combine.
 	 * @returns The new locale data object.

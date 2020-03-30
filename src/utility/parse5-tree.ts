@@ -43,7 +43,7 @@ export function analyzeElementContent(element: DefaultTreeElement, ignoreTextCon
 	for (const node of element.childNodes) {
 		if (adapter.isTextNode(node)) {
 			const content = adapter.getTextNodeContent(node);
-			if (!ignoreTextContent(content)) {
+			if (content.trim() && !ignoreTextContent(content)) {
 				text += content;
 				hasText = true;
 			}

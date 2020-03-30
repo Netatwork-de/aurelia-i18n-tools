@@ -1,0 +1,7 @@
+{
+	"verbose": true,
+	"files": [
+		"test_out/**/*.js",
+		"!**/_*"
+	]
+}

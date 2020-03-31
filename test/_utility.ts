@@ -1,5 +1,5 @@
 import { ExecutionContext } from "ava";
-import { Diagnostics, Diagnostic } from "../src";
+import { Diagnostics, Diagnostic, Project, TranslationData } from "../src";
 
 export function expectNoDiagnostics(t: ExecutionContext) {
 	const host = new Diagnostics();
@@ -16,6 +16,20 @@ export function captureDiagnostics() {
 		all.push(diagnostic);
 	});
 	return { host, all };
+}
+
+export async function handleModified(project: Project) {
+	const sources = new Map<string, string>();
+	let translationData: TranslationData | undefined;
+	await project.handleModified({
+		writeSource(source) {
+			sources.set(source.filename, source.source);
+		},
+		writeTranslationData(data) {
+			translationData = data;
+		}
+	});
+	return { sources, translationData };
 }
 
 export function code(code: string) {

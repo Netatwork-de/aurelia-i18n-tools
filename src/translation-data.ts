@@ -115,18 +115,58 @@ export class TranslationData {
 	 * @param filename The filename.
 	 * @param oldKey The key to replace.
 	 * @param newKey The new key.
-	 * @returns true if the key has been replaced.
+	 * @param hintFilenames A hint to other files where translations for the old key could be found.
+	 * @returns true if anything has been copied.
 	 */
-	public copyKey(filename: string, oldKey: string, newKey: string) {
+	public copyTranslations(filename: string, oldKey: string, newKey: string, hintFilenames?: Iterable<string>) {
 		const file = this.files.get(filename);
 		if (file) {
 			const translation = file.content.get(oldKey);
-			if (translation) {
-				file.content.set(newKey, translation);
+			if (translation && translation.translations.size > 0) {
+				file.content.set(newKey, TranslationData.cloneTranslationSet(translation));
 				return true;
+			} else if (hintFilenames) {
+				for (const filename of hintFilenames) {
+					const oldFile = this.files.get(filename);
+					if (oldFile) {
+						const translation = oldFile.content.get(oldKey);
+						if (translation && translation.translations.size > 0) {
+							file.content.set(newKey, TranslationData.cloneTranslationSet(translation));
+							return true;
+						}
+					}
+				}
 			}
 		}
 		return false;
+	}
+
+	/**
+	 * Deep clone a translation set.
+	 * @param value The set to clone.
+	 * @param markAsOutdated If true, the clone will be marked as outdated. Default is `true`
+	 */
+	public static cloneTranslationSet(value: TranslationData.TranslationSet, markAsOutdated = true): TranslationData.TranslationSet {
+		const translations = new Map();
+		for (const [localeId, translation] of value.translations) {
+			translations.set(localeId, TranslationData.cloneTranslation(translation));
+		}
+		const clone = { source: TranslationData.cloneTranslation(value.source), translations };
+		if (markAsOutdated) {
+			clone.source.lastModified = Date.now();
+		}
+		return clone;
+	}
+
+	/**
+	 * Deep clone a translation object.
+	 */
+	public static cloneTranslation(value: TranslationData.Translation): TranslationData.Translation {
+		return {
+			content: value.content,
+			lastModified: value.lastModified,
+			ignoreSpelling: Array.from(value.ignoreSpelling)
+		};
 	}
 
 	/**

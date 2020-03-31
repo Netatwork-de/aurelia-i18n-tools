@@ -107,6 +107,11 @@ export class Project {
 	 * Should be called by a task runner to process updated sources.
 	 */
 	public processSources(options: ProjectProcessSourcesOptions = {}) {
+		for (const [filename, file] of this._translationData.files) {
+			for (const key of file.content.keys()) {
+				this._knownKeys.add(filename, key);
+			}
+		}
 		for (const filename of this._unprocessedSources) {
 			this._unprocessedSources.delete(filename);
 			const source = this._sources.get(filename)!;
@@ -128,7 +133,8 @@ export class Project {
 				if (result.modified) {
 					for (const [oldKey, newKeys] of result.replacedKeys) {
 						for (const newKey of newKeys) {
-							if (this._translationData.copyKey(filename, oldKey, newKey)) {
+							const hintFilenames = this._knownKeys.getKeys(oldKey);
+							if (this._translationData.copyTranslations(filename, oldKey, newKey, hintFilenames)) {
 								this._translationDataModified = true;
 							}
 						}
@@ -138,8 +144,8 @@ export class Project {
 				}
 			}
 		}
-		for (const filename of this._translationData.files.keys()) {
-			if (!this._sources.has(filename)) {
+		for (const [filename, file] of this._translationData.files) {
+			if (!this._sources.has(filename) || file.content.size === 0) {
 				this._translationData.files.delete(filename);
 			}
 		}

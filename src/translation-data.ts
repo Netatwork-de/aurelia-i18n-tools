@@ -116,6 +116,7 @@ export class TranslationData {
 	 * @param oldKey The key to replace.
 	 * @param newKey The new key.
 	 * @param hintFilenames A hint to other files where translations for the old key could be found.
+	 * @returns true if anything has been copied.
 	 */
 	public copyTranslations(filename: string, oldKey: string, newKey: string, hintFilenames?: Iterable<string>) {
 		const file = this.files.get(filename);

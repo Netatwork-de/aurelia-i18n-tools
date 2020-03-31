@@ -107,6 +107,11 @@ export class Project {
 	 * Should be called by a task runner to process updated sources.
 	 */
 	public processSources(options: ProjectProcessSourcesOptions = {}) {
+		for (const [filename, file] of this._translationData.files) {
+			for (const key of file.content.keys()) {
+				this._knownKeys.add(filename, key);
+			}
+		}
 		for (const filename of this._unprocessedSources) {
 			this._unprocessedSources.delete(filename);
 			const source = this._sources.get(filename)!;

@@ -200,7 +200,7 @@ export class AureliaTemplateFile implements Source {
 				}
 			}
 			const location = element.sourceCodeLocation!;
-			let start = 0, end = 0;
+			let start = 0, end = 0, space: string;
 			if (originalAttribute) {
 				const attributeLocation = element.sourceCodeLocation!.attrs.t;
 				start = attributeLocation.startOffset;
@@ -208,15 +208,17 @@ export class AureliaTemplateFile implements Source {
 				while (/\s/.test(this._source.charAt(start - 1))) {
 					start--;
 				}
+				space = this._source.slice(start, attributeLocation.startOffset);
 			} else {
 				const tagLocation = location.startTag;
 				start = end = tagLocation.endOffset - 1;
+				space = " ";
 			}
 
 			if (attribute.isEmpty) {
 				commits.push({ start, end, replacement: "" });
 			} else {
-				commits.push({ start, end, replacement: ` t="${attribute}"` })
+				commits.push({ start, end, replacement: `${space}t="${attribute}"` })
 			}
 		}
 

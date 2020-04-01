@@ -44,7 +44,7 @@ export class Project {
 		this._translationDataModified = false;
 	}
 
-	protected getPrefix(filename: string) {
+	public getPrefix(filename: string) {
 		if (/^\.\.($|[\\\/])/.test(path.relative(this.config.src, filename))) {
 			throw new Error(`Filename is outside of the project source directory: ${filename}`);
 		}
@@ -55,7 +55,7 @@ export class Project {
 		function sanitizeName(value: string) {
 			return value
 				.replace(/([a-z0-9])([A-Z])/g, "$1-$2")
-				.replace(/[^a-zA-Z0-9]+/, "-")
+				.replace(/[^a-zA-Z0-9\.]+/, "-")
 				.toLowerCase();
 		}
 

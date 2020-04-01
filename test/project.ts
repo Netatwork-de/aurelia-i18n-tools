@@ -158,3 +158,21 @@ test("use existing translations for replaced prefixes", async t => {
 
 	t.true(translationData!.files.get(filename1)!.content.get("app.test.t0")!.translations.has("de"));
 });
+
+test("prefixes", t => {
+	const config = createConfig(__dirname, { src: "src", prefix: "app." });
+	const project = new Project({ config });
+
+	function getPrefix(name: string) {
+		return project.getPrefix(path.join(__dirname, name));
+	}
+
+	t.is(getPrefix("src/test.html"), "app.test.t");
+	t.is(getPrefix("src/test/index.html"), "app.test.t");
+	t.is(getPrefix("src/Test/index.html"), "app.test.t");
+	t.is(getPrefix("src/foo-bar.html"), "app.foo-bar.t");
+	t.is(getPrefix("src/fooBar.html"), "app.foo-bar.t");
+	t.is(getPrefix("src/fooBarBaz.html"), "app.foo-bar-baz.t");
+	t.is(getPrefix("src/fooBAR.html"), "app.foo-bar.t");
+	t.is(getPrefix("src/foo.bar.html"), "app.foo.bar.t");
+});

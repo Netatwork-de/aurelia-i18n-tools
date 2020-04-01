@@ -110,3 +110,22 @@ test("report unlocalized whitespace", t => {
 	`));
 	t.deepEqual(diagnostics.all.map(d => d.type), [Diagnostic.Type.UnlocalizedText]);
 });
+
+test("keep linebreaks when replacing keys", t => {
+	const source = AureliaTemplateFile.parse(filename, code(`
+		<div foo="bar"
+			t="test.t7"
+			baz="boo">content</div>
+	`));
+	const result = source.justifyKeys(config, {
+		prefix: "test.t",
+		diagnostics: expectNoDiagnostics(t)
+	});
+	t.true(result.modified);
+	t.is(result.replacedKeys.size, 0);
+	t.is(source.source, code(`
+		<div foo="bar"
+			t="test.t7;[foo]test.t0"
+			baz="boo">content</div>
+	`));
+});

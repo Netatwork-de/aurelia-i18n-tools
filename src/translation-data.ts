@@ -20,6 +20,9 @@ export class TranslationData {
 	 * @returns true if anything has been modified.
 	 */
 	public updateKeys(filename: string, keys: Map<string, string>) {
+		if (keys.size === 0) {
+			return false;
+		}
 		let modified = false;
 		let file = this.files.get(filename);
 		if (!file) {

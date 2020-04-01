@@ -135,7 +135,7 @@ export class AureliaTemplateFile implements Source {
 			const replace = preferredKey && mustBeReplaced(preferredKey);
 			if (!key || generatedKeys.has(key) || replace) {
 				do {
-					key = `${prefix}${nextPostfix++}`;
+					key = `${prefix}t${nextPostfix++}`;
 				} while (knownKeys.has(key) || mustBeReplaced(key));
 			}
 			knownKeys.add(key);

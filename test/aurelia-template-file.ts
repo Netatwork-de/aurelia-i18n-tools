@@ -19,7 +19,7 @@ test("allocate new keys", t => {
 		<div foo="bar">content</div>
 	`));
 	const result = source.justifyKeys(config, {
-		prefix: "test.t",
+		prefix: "test.",
 		diagnostics: expectNoDiagnostics(t)
 	});
 	t.true(result.modified);
@@ -34,7 +34,7 @@ test("reuse existing keys", t => {
 		<div foo="bar" t="test.t7">content</div>
 	`));
 	const result = source.justifyKeys(config, {
-		prefix: "test.t",
+		prefix: "test.",
 		diagnostics: expectNoDiagnostics(t)
 	});
 	t.true(result.modified);
@@ -50,7 +50,7 @@ test("replace duplicate keys", t => {
 		<div t="test.t7">content</div>
 	`));
 	const result = source.justifyKeys(config, {
-		prefix: "test.t",
+		prefix: "test.",
 		diagnostics: expectNoDiagnostics(t)
 	});
 	t.true(result.modified);
@@ -66,7 +66,7 @@ test("replace reserved keys", t => {
 		<div t="test.t7">content</div>
 	`));
 	const result = source.justifyKeys(config, {
-		prefix: "test.t",
+		prefix: "test.",
 		diagnostics: expectNoDiagnostics(t),
 		isReserved: k => k === "test.t7"
 	});
@@ -83,7 +83,7 @@ test("replace keys with wrong prefixes", t => {
 		<div t="foo.t7">content</div>
 	`));
 	const result = source.justifyKeys(config, {
-		prefix: "test.t",
+		prefix: "test.",
 		diagnostics: expectNoDiagnostics(t),
 		enforcePrefix: true
 	});
@@ -101,7 +101,7 @@ test("report unlocalized whitespace", t => {
 		<span>content</span>
 	`));
 	const result = source.justifyKeys(config, {
-		prefix: "test.t",
+		prefix: "test.",
 		diagnostics: diagnostics.host
 	});
 	t.false(result.modified);
@@ -118,7 +118,7 @@ test("keep linebreaks when replacing keys", t => {
 			baz="boo">content</div>
 	`));
 	const result = source.justifyKeys(config, {
-		prefix: "test.t",
+		prefix: "test.",
 		diagnostics: expectNoDiagnostics(t)
 	});
 	t.true(result.modified);

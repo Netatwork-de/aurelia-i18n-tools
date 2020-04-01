@@ -167,12 +167,12 @@ test("prefixes", t => {
 		return project.getPrefix(path.join(__dirname, name));
 	}
 
-	t.is(getPrefix("src/test.html"), "app.test.t");
-	t.is(getPrefix("src/test/index.html"), "app.test.t");
-	t.is(getPrefix("src/Test/index.html"), "app.test.t");
-	t.is(getPrefix("src/foo-bar.html"), "app.foo-bar.t");
-	t.is(getPrefix("src/fooBar.html"), "app.foo-bar.t");
-	t.is(getPrefix("src/fooBarBaz.html"), "app.foo-bar-baz.t");
-	t.is(getPrefix("src/fooBAR.html"), "app.foo-bar.t");
-	t.is(getPrefix("src/foo.bar.html"), "app.foo.bar.t");
+	t.is(getPrefix("src/test.html"), "app.test.");
+	t.is(getPrefix("src/test/index.html"), "app.test.");
+	t.is(getPrefix("src/Test/index.html"), "app.test.");
+	t.is(getPrefix("src/foo-bar.html"), "app.foo-bar.");
+	t.is(getPrefix("src/fooBar.html"), "app.foo-bar.");
+	t.is(getPrefix("src/fooBarBaz.html"), "app.foo-bar-baz.");
+	t.is(getPrefix("src/fooBAR.html"), "app.foo-bar.");
+	t.is(getPrefix("src/foo.bar.html"), "app.foo.bar.");
 });

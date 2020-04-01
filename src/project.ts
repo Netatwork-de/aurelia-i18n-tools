@@ -63,11 +63,11 @@ export class Project {
 		if (name === "index") {
 			const dirname = path.dirname(filename);
 			if (dirname.length > this.config.src.length) {
-				return `${this.config.prefix}${sanitizeName(path.basename(dirname))}.t`;
+				return `${this.config.prefix}${sanitizeName(path.basename(dirname))}.`;
 			}
 		}
 
-		return `${this.config.prefix}${sanitizeName(name)}.t`;
+		return `${this.config.prefix}${sanitizeName(name)}.`;
 	}
 
 	protected extractKeys(source: Source, prefix = this.getPrefix(source.filename)) {

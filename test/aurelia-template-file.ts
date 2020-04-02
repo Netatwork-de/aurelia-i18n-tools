@@ -17,6 +17,7 @@ const config = createConfig(__dirname, {
 test("allocate new keys", t => {
 	const source = AureliaTemplateFile.parse(filename, code(`
 		<div foo="bar">content</div>
+		<div foo=""></div>
 	`));
 	const result = source.justifyKeys(config, {
 		prefix: "test.",
@@ -26,6 +27,7 @@ test("allocate new keys", t => {
 	t.is(result.replacedKeys.size, 0);
 	t.is(source.source, code(`
 		<div foo="bar" t="test.t0;[foo]test.t1">content</div>
+		<div foo="" t="[foo]test.t2"></div>
 	`));
 });
 

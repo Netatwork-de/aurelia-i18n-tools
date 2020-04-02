@@ -180,7 +180,7 @@ export class AureliaTemplateFile implements Source {
 
 			for (const attributeName of elementConfig.attributes) {
 				const value = getAttributeValue(element, attributeName);
-				if (value && !config.ignoreAttributeValue(value)) {
+				if (value !== undefined && !config.ignoreAttributeValue(value)) {
 					attribute.set(attributeName, getUniqueKey(originalAttribute && originalAttribute.get(attributeName)));
 				}
 				// TODO: Allow keeping ids if attribute is not set.

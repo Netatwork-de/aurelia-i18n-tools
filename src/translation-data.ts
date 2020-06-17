@@ -30,7 +30,9 @@ export class TranslationData {
 		let file = this.files.get(filename);
 		if (!file) {
 			file = { content: new Map() };
-			this.files.set(filename, file);
+			if (keys.size > 0) {
+				this.files.set(filename, file);
+			}
 		}
 		for (const [key, content] of keys) {
 			const translation = file.content.get(key);

@@ -26,9 +26,6 @@ export class TranslationData {
 	 * @returns true if anything has been modified.
 	 */
 	public updateKeys(filename: string, keys: Map<string, string>) {
-		if (keys.size === 0) {
-			return false;
-		}
 		let modified = false;
 		let file = this.files.get(filename);
 		if (!file) {
@@ -55,8 +52,9 @@ export class TranslationData {
 				modified = true;
 			}
 		}
-		for (const key of file.content.keys()) {
+		for (const [key, translationSet] of file.content) {
 			if (!keys.has(key)) {
+				this.pushObsoleteSet(translationSet);
 				file.content.delete(key);
 				modified = true;
 			}
@@ -148,6 +146,25 @@ export class TranslationData {
 			}
 		}
 		return false;
+	}
+
+	private pushObsoleteSet(translationSet: TranslationData.TranslationSet) {
+		this.obsolete.push({
+			content: translationSet.source.content,
+			translations: new Map(Array.from(translationSet.translations).map(([localeId, translation]) => {
+				return [localeId, translation.content];
+			}))
+		});
+	}
+
+	public deleteFile(filename: string) {
+		var file = this.files.get(filename);
+		if (file) {
+			this.files.delete(filename);
+			for (var translationSet of file.content.values()) {
+				this.pushObsoleteSet(translationSet);
+			}
+		}
 	}
 
 	/**

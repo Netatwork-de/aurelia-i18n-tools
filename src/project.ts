@@ -41,7 +41,7 @@ export class Project {
 
 	public set translationData(data: TranslationData) {
 		this._translationData = data;
-		this._translationDataModified = false;
+		this._translationDataModified = data.parsedVersion != 2;
 	}
 
 	public getPrefix(filename: string) {

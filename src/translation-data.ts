@@ -1,7 +1,7 @@
 import * as path from "path";
 import { LocaleData } from "./locale-data";
 import { Config } from "./config";
-import { Diagnostics, Diagnostic } from "./diagnostics";
+import { Diagnostics, Diagnostic, DiagnosticFormatter } from "./diagnostics";
 
 /**
  * A container for translation data that is used as an
@@ -10,7 +10,13 @@ import { Diagnostics, Diagnostic } from "./diagnostics";
 export class TranslationData {
 	public constructor(
 		/** A map of absolute filenames to file information */
-		public readonly files = new Map<string, TranslationData.File>()
+		public readonly files = new Map<string, TranslationData.File>(),
+
+		/** An array of obsolete translations */
+		public readonly obsolete: TranslationData.ObsoleteTranslation[] = [],
+
+		/** The version of the file that was loaded */
+		public readonly parsedVersion: 1 | 2 = 2
 	) {}
 
 	/**
@@ -178,25 +184,48 @@ export class TranslationData {
 	 * @param basePath The base path for resolving filenames.
 	 */
 	public static parse(json: string, basePath: string) {
-		const data: TranslationData.Json = JSON.parse(json);
+		const data: TranslationData.JsonV1 | TranslationData.JsonV2 = JSON.parse(json);
 		if (!isObject(data)) {
 			throw new TypeError(`data must be an object.`);
 		}
 		const files = new Map<string, TranslationData.File>();
-		for (let name in data) {
+		const obsolete: TranslationData.ObsoleteTranslation[] = [];
+
+		let version: 1 | 2;
+		let jsonFiles: Record<string, TranslationData.JsonV2.File>;
+		let jsonObsolete: TranslationData.JsonV2.ObsoleteTranslation[];
+		if (TranslationData.isJsonV2(data)) {
+			jsonFiles = data.files;
+			if (!isObject(jsonFiles)) {
+				throw new TypeError(`files must be an object.`);
+			}
+
+			jsonObsolete = data.obsolete;
+			if (!Array.isArray(jsonObsolete)) {
+				throw new TypeError(`obsolete must be an array.`);
+			}
+
+			version = 2;
+		} else {
+			jsonFiles = data;
+			jsonObsolete = [];
+			version = 1;
+		}
+
+		for (let name in jsonFiles) {
 			if (path.isAbsolute(name)) {
 				throw new TypeError(`data contains a non relative filename: ${name}`);
 			}
-			const fileData = data[name];
-			if (!isObject(fileData)) {
-				throw new TypeError(`data["${name}"] must be an object.`);
+			const jsonFile = jsonFiles[name];
+			if (!isObject(jsonFile)) {
+				throw new TypeError(`files["${name}"] must be an object.`);
 			}
-			if (!isObject(fileData.content)) {
-				throw new TypeError(`data["${name}"].content must be an object.`);
+			if (!isObject(jsonFile.content)) {
+				throw new TypeError(`files["${name}"].content must be an object.`);
 			}
 			const content = new Map<string, TranslationData.TranslationSet>();
-			for (let key in fileData.content) {
-				function parseTranslation(data: TranslationData.Json.Translation, location: string): TranslationData.Translation {
+			for (const key in jsonFile.content) {
+				function parseTranslation(data: TranslationData.JsonV2.Translation, location: string): TranslationData.Translation {
 					if (!isObject(data)) {
 						throw new TypeError(`${location} must be an object.`);
 					}
@@ -216,20 +245,45 @@ export class TranslationData {
 						ignoreSpelling: data.ignoreSpelling
 					};
 				}
-				const keyData = fileData.content[key];
-				const source = parseTranslation(keyData, `data["${name}"].content["${key}"]`);
+				const keyData = jsonFile.content[key];
+				const source = parseTranslation(keyData, `files["${name}"].content["${key}"]`);
 				const translations = new Map<string, TranslationData.Translation>();
 				if (!isObject(keyData.translations)) {
-					throw new TypeError(`data["${name}"].content["${key}"].translations must be an object.`);
+					throw new TypeError(`files["${name}"].content["${key}"].translations must be an object.`);
 				}
 				for (const locale in keyData.translations) {
-					translations.set(locale, parseTranslation(keyData.translations[locale], `data["${name}"].content["${key}"].translations["${locale}"]`));
+					translations.set(locale, parseTranslation(keyData.translations[locale], `files["${name}"].content["${key}"].translations["${locale}"]`));
 				}
 				content.set(key, { source, translations });
 			}
 			files.set(filenameFromJson(basePath, name), { content });
 		}
-		return new TranslationData(files);
+
+		for (let i = 0; i < jsonObsolete.length; i++) {
+			var jsonItem = jsonObsolete[i];
+			if (!isObject(jsonItem)) {
+				throw new TypeError(`obsolete[${i}] must be an object.`);
+			}
+			if (typeof jsonItem.content !== "string") {
+				throw new TypeError(`obsolete[${i}].content must be a string.`);
+			}
+			if (!isObject(jsonItem.translations)) {
+				throw new TypeError(`obsolete[${i}].translations must be an object.`);
+			}
+			const translations = new Map<string, string>();
+			for (const locale in jsonItem.translations) {
+				if (typeof jsonItem.translations[locale] !== "string") {
+					throw new TypeError(`obsolete[${i}].translations["${locale}"] must be a string.`);
+				}
+				translations.set(locale, jsonItem.translations[locale]);
+			}
+			obsolete.push({
+				content: jsonItem.content,
+				translations
+			});
+		}
+
+		return new TranslationData(files, obsolete, version);
 	}
 
 	/**
@@ -237,19 +291,23 @@ export class TranslationData {
 	 * @param basePath The base path for creating relative filenames.
 	 */
 	public formatJson(basePath: string) {
-		const json: TranslationData.Json = Object.create(null)
+		const json: TranslationData.JsonV2 = Object.create(null)
+		json.version = 2;
 
 		const sortedFiles = Array.from(this.files)
 			.map<[string, TranslationData.File]>(([filename, file]) => [filenameToJson(basePath, filename), file])
 			.sort(sortByKey);
 
+		const jsonFiles: Record<string, TranslationData.JsonV2.File> = Object.create(null);
+		json.files = jsonFiles;
+
 		for (const [name, file] of sortedFiles) {
-			const fileJson: TranslationData.Json.File = Object.create(null);
+			const fileJson: TranslationData.JsonV2.File = Object.create(null);
 			fileJson.content = Object.create(null);
 
 			for (const [key, translationSet] of Array.from(file.content).sort(sortByKey)) {
-				const translationSetJson: TranslationData.Json.TranslationSet = Object.create(null);
-				function formatTranslation(to: TranslationData.Json.Translation, from: TranslationData.Translation) {
+				const translationSetJson: TranslationData.JsonV2.TranslationSet = Object.create(null);
+				function formatTranslation(to: TranslationData.JsonV2.Translation, from: TranslationData.Translation) {
 					to.content = from.content;
 					to.lastModified = new Date(from.lastModified).toISOString();
 					to.ignoreSpelling = from.ignoreSpelling;
@@ -258,14 +316,34 @@ export class TranslationData {
 				translationSetJson.translations = Object.create(null);
 
 				for (const [locale, translation] of Array.from(translationSet.translations).sort(sortByKey)) {
-					const translationJson: TranslationData.Json.Translation = Object.create(null);
+					const translationJson: TranslationData.JsonV2.Translation = Object.create(null);
 					formatTranslation(translationJson, translation);
 					translationSetJson.translations[locale]  = translationJson;
 				}
 				fileJson.content[key] = translationSetJson;
 			}
-			json[name] = fileJson;
+			jsonFiles[name] = fileJson;
 		}
+
+		const jsonObsolete: TranslationData.JsonV2.ObsoleteTranslation[] = [];
+		json.obsolete = jsonObsolete;
+
+		const rawObsoleteItems = new Set<string>();
+		for (const item of this.obsolete) {
+			const itemJson: TranslationData.JsonV2.ObsoleteTranslation = Object.create(null);
+			itemJson.content = item.content;
+			itemJson.translations = Object.create(null);
+			for (const [locale, content] of Array.from(item.translations).sort(sortByKey)) {
+				itemJson.translations[locale] = content;
+			}
+
+			const rawJson = JSON.stringify(itemJson);
+			if (!rawObsoleteItems.has(rawJson)) {
+				rawObsoleteItems.add(rawJson);
+				json.obsolete.push(itemJson);
+			}
+		}
+
 		return JSON.stringify(json, null, "\t");
 	}
 }
@@ -311,11 +389,29 @@ export namespace TranslationData {
 		ignoreSpelling: string[];
 	}
 
+	export interface ObsoleteTranslation {
+		/** The content. */
+		content: string;
+		/** A map of locale ids to translated content. */
+		readonly translations: Map<string, string>;
+	}
+
+	export function isJsonV2(data: JsonV1 | JsonV2): data is JsonV2 {
+		return data.version === 2;
+	}
+
 	/**
 	 * Type for the json schema of serialized translation data.
 	 */
-	export type Json = Record<string, Json.File>;
-	export namespace Json {
+	export interface JsonV2 {
+		version: 2;
+		files: Record<string, JsonV2.File>;
+		obsolete: JsonV2.ObsoleteTranslation[];
+	}
+
+	export type JsonV1 = Record<string, JsonV2.File>;
+
+	export namespace JsonV2 {
 		export interface File {
 			content: Record<string, TranslationSet>;
 		}
@@ -328,6 +424,11 @@ export namespace TranslationData {
 			content: string;
 			lastModified: string;
 			ignoreSpelling: string[];
+		}
+
+		export interface ObsoleteTranslation {
+			content: string;
+			translations: Record<string, string>;
 		}
 	}
 }

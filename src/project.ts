@@ -41,7 +41,7 @@ export class Project {
 
 	public set translationData(data: TranslationData) {
 		this._translationData = data;
-		this._translationDataModified = false;
+		this._translationDataModified = data.parsedVersion != 2;
 	}
 
 	public getPrefix(filename: string) {
@@ -146,7 +146,7 @@ export class Project {
 		}
 		for (const [filename, file] of this._translationData.files) {
 			if (!this._sources.has(filename) || file.content.size === 0) {
-				this._translationData.files.delete(filename);
+				this._translationData.deleteFile(filename);
 				this._translationDataModified = true;
 			}
 		}

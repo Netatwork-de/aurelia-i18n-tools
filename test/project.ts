@@ -75,9 +75,9 @@ test("add removed translations to obsolete items", async t => {
 	project.processSources();
 
 	const { translationData } = await handleModified(project);
-	t.is(translationData.obsolete.length, 2);
-	t.is(translationData.obsolete[0].content, "bar");
-	t.is(translationData.obsolete[1].content, "foo");
+	t.is(translationData!.obsolete.length, 2);
+	t.is(translationData!.obsolete[0].content, "bar");
+	t.is(translationData!.obsolete[1].content, "foo");
 });
 
 test("use existing translations for reserved keys", async t => {

@@ -151,12 +151,14 @@ export class TranslationData {
 	}
 
 	private pushObsoleteSet(translationSet: TranslationData.TranslationSet) {
-		this.obsolete.push({
-			content: translationSet.source.content,
-			translations: new Map(Array.from(translationSet.translations).map(([localeId, translation]) => {
-				return [localeId, translation.content];
-			}))
-		});
+		if (translationSet.translations.size > 0) {
+			this.obsolete.push({
+				content: translationSet.source.content,
+				translations: new Map(Array.from(translationSet.translations).map(([localeId, translation]) => {
+					return [localeId, translation.content];
+				}))
+			});
+		}
 	}
 
 	public deleteFile(filename: string) {

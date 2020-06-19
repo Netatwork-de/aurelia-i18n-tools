@@ -40,7 +40,7 @@ test("justify sources and update translation data", async t => {
 	t.is(translationData!.files.get(filename)!.content.get("app.test.t0")!.source.content, "test");
 });
 
-test("add removed translations to obsolete items", async t => {
+test("skip adding removed translations to obsolete items if no translations exist", async t => {
 	const config = createConfig(__dirname, {
 		src: ".",
 		prefix: "app.",
@@ -66,6 +66,56 @@ test("add removed translations to obsolete items", async t => {
 
 	project.processSources();
 	await handleModified(project);
+
+	project.deleteSource(filename1);
+	project.updateSource(AureliaTemplateFile.parse(filename2, code(`
+		<template></template>
+	`)));
+
+	project.processSources();
+
+	const { translationData } = await handleModified(project);
+	t.is(translationData!.obsolete.length, 0);
+});
+
+test("add removed translations to obsolete items if translations exist", async t => {
+	const config = createConfig(__dirname, {
+		src: ".",
+		prefix: "app.",
+		localize: {
+			div: { content: ElementContentLocalizationType.Text }
+		}
+	});
+	const project = new Project({ config, development: true });
+
+	const filename1 = path.join(__dirname, "test1.html");
+	project.updateSource(AureliaTemplateFile.parse(filename1, code(`
+		<template>
+			<div>foo</div>
+		</template>
+	`)));
+
+	const filename2 = path.join(__dirname, "test2.html");
+	project.updateSource(AureliaTemplateFile.parse(filename2, code(`
+		<template>
+			<div>bar</div>
+		</template>
+	`)));
+
+	project.processSources();
+	await handleModified(project);
+
+	project.translationData.files.get(filename1)!.content.get("app.test1.t0")!.translations.set("de", {
+		content: "Foo",
+		ignoreSpelling: [],
+		lastModified: Date.now()
+	});
+
+	project.translationData.files.get(filename2)!.content.get("app.test2.t0")!.translations.set("de", {
+		content: "Bar",
+		ignoreSpelling: [],
+		lastModified: Date.now()
+	});
 
 	project.deleteSource(filename1);
 	project.updateSource(AureliaTemplateFile.parse(filename2, code(`

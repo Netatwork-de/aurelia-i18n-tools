@@ -3,7 +3,8 @@ In every localized project, an `i18n.json` file is used to store all translation
 This file can then be modified by external tools to localize an application.
 
 ## Schema
-The following schema represents the data in an `i18n.json` file.
+The following schema represents the data in an `i18n.json` file.<br>
+Note, that dates must always be represented as an ISO 8601 date string in the UTC time zone.
 ```js
 {
     "version": 2,
@@ -17,7 +18,7 @@ The following schema represents the data in an `i18n.json` file.
                 "<key>": {
                     // The default english translation that is extracted from the source code:
                     "content": "<english content>",
-                    // The last modified date of the english translation in the source as an iso string:
+                    // The last modified date of the english translation in the source:
                     "lastModified": "<last modified>",
                     // An array of string parts that can be ignored by external spell checkers:
                     "ignoreSpelling": [],
@@ -48,7 +49,6 @@ The following schema represents the data in an `i18n.json` file.
     ]
 }
 ```
-
 Type definitions for the above schema are exported as `TranslationData.Json`
 ```ts
 import { TranslationData } from "@netatwork/aurelia-i18n-tools";

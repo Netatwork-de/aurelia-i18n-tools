@@ -68,7 +68,7 @@ export class AureliaTemplateFile implements Source {
 		const candidates: JustificationCandidate[] = [];
 
 		for (const element of traverseElements(this._root, config.ignoreElement)) {
-			const elementConfig = config.localizedElements.get(element.tagName);
+			const elementConfig = config.getLocalizedElement(element.tagName);
 			const { hasText, hasElements } = analyzeElementContent(element, config.ignoreTextContent);
 			const originalAttributeValue = getAttributeValue(element, "t");
 			if (elementConfig) {

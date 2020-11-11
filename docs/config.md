@@ -27,6 +27,7 @@ const config = createConfig(context, options);
             + `"text"` - Content is localized as text.
             + `"html"` - Content is localized as html.
         + attributes `<string[]>` - An array of attribute names that can be localized.
+        + `"*"` as the tag name matches every element that is not explicitly configured.
     + diagnostics `<object>` - An object to specify how diagnostics should handled.
         + all `<HandlingType>` - A fallback value for unconfigured types. Default is `"warn"`.
         + *[Diagnostic.Type]* `<HandlingType>` - Specify how specific diagnostics are handled.
@@ -41,6 +42,9 @@ createConfig(__dirname, {
     prefix: "app.",
     sourceLocale: "en",
     localize: {
+        "*": {
+            attributes: ["title"]
+        },
         h1: {
             content: ElementContentLocalizationType.Text
         },

@@ -40,6 +40,47 @@ test("justify sources and update translation data", async t => {
 	t.is(translationData!.files.get(filename)!.content.get("app.test.t0")!.source.content, "test");
 });
 
+test("use fallback for unknown elements", async t => {
+	const config = createConfig(__dirname, {
+		src: ".",
+		prefix: "app.",
+		localize: {
+			"*": { content: ElementContentLocalizationType.Text },
+			"div": { },
+			"input": { attributes: ["placeholder"] },
+		}
+	});
+
+	const project = new Project({
+		config,
+		development: true
+	});
+
+	const filename = path.join(__dirname, "test.html");
+	project.updateSource(AureliaTemplateFile.parse(filename, code(`
+		<template>
+			<div>foo</div>
+			<span>bar</span>
+			<input placeholder="baz">
+		</template>
+	`)));
+
+	project.processSources({
+		enforcePrefix: true
+	});
+
+	const { sources } = await handleModified(project);
+
+	t.is(sources.size, 1);
+	t.is(sources.get(filename), code(`
+		<template>
+			<div>foo</div>
+			<span t="app.test.t0">bar</span>
+			<input placeholder="baz" t="[placeholder]app.test.t1">
+		</template>
+	`));
+});
+
 test("skip adding removed translations to obsolete items if no translations exist", async t => {
 	const config = createConfig(__dirname, {
 		src: ".",

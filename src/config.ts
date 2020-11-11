@@ -36,6 +36,8 @@ export interface ConfigOptions {
 	/**
 	 * A map of elements that can be localized.
 	 * By default, nothing is localized.
+	 *
+	 * `"*"` as the tag name matches every element that is not explicitly configured.
 	 */
 	localize?: Record<string, {
 		/**
@@ -77,8 +79,8 @@ export interface Config {
 	ignoreTextContent: (content: string) => boolean;
 	/** A function that is called to check if an attribute should be ignored. */
 	ignoreAttributeValue: (name: string) => boolean;
-	/** A map of localized tags. */
-	localizedElements: ReadonlyMap<string, Config.LocalizedElement>;
+	/** Get the configuration how an element is localized. */
+	getLocalizedElement: (tagName: string) => Config.LocalizedElement | undefined;
 	/** A function that is used to determine how a specific diagnostic type is handled. */
 	getDiagnosticHandling: (type: Diagnostic.Type) => Config.DiagnosticHandling;
 }
@@ -153,6 +155,7 @@ export function createConfig(context: string, options: ConfigOptions = {}): Conf
 		}
 	}
 
+	let localizedElementFallback: Config.LocalizedElement | undefined = undefined;
 	const localizedElements = new Map<string, Config.LocalizedElement>();
 	if (options.localize) {
 		for (const tagName in options.localize) {
@@ -163,10 +166,17 @@ export function createConfig(context: string, options: ConfigOptions = {}): Conf
 			if (item.attributes && (!Array.isArray(item.attributes) || !item.attributes.every(n => typeof n === "string"))) {
 				throw new TypeError(`localize.${tagName}.attributes must be an array of strings.`);
 			}
-			localizedElements.set(tagName, {
+
+			const config: Config.LocalizedElement = {
 				content: item.content || ElementContentLocalizationType.None,
 				attributes: new Set(item.attributes || [])
-			});
+			};
+
+			if (tagName === "*") {
+				localizedElementFallback = config;
+			} else {
+				localizedElements.set(tagName, config);
+			}
 		}
 	}
 
@@ -204,7 +214,7 @@ export function createConfig(context: string, options: ConfigOptions = {}): Conf
 		ignoreElement: createIgnoreFunction(ignoreElements),
 		ignoreTextContent: createIgnoreFunction(ignoreTextContent),
 		ignoreAttributeValue: createIgnoreFunction(ignoreAttributeValue),
-		localizedElements,
+		getLocalizedElement: tagName => localizedElements.get(tagName) || localizedElementFallback,
 		getDiagnosticHandling: type => diagnosticHandling.get(type) || diagnosticHandlingFallback
 	};
 }

@@ -37,23 +37,36 @@ export class AureliaTemplateFile implements Source {
 	public extractKeys(config: Config) {
 		const keys = new Map<string, string>();
 		for (const element of traverseElements(this._root, config.ignoreElement)) {
+			const elementWhitespaceHandling = config.getElementWhitespaceHandling(element.tagName);
+
 			const attributeValue = getAttributeValue(element, "t");
 			if (attributeValue !== undefined) {
 				try {
 					const attribute = AureliaI18nAttribute.parse(attributeValue);
 					for (const [name, key] of attribute) {
-						function add(this: AureliaTemplateFile, key: string, value: string) {
-							if (keys.has(key)) {
+						function add(this: AureliaTemplateFile, key: string, value: string, whitespaceHandling: Config.WhitespaceHandling) {
+							switch (whitespaceHandling) {
+								case Config.WhitespaceHandling.Trim:
+									value = value.replace(/^\s*|\s*$/g, "");
+									break;
+
+								case Config.WhitespaceHandling.Collapse:
+									value = value.replace(/\s+/g, " ");
+									break;
+
+								case Config.WhitespaceHandling.TrimCollapse:
+									value = value.replace(/^\s*|\s*$/g, "").replace(/\s+/g, " ");
+									break;
 							}
 							keys.set(key, value);
 						}
 						if (name === "text" || name === "html") {
 							const { text } = analyzeElementContent(element, config.ignoreTextContent);
-							add.call(this, key, text);
+							add.call(this, key, text, elementWhitespaceHandling.content);
 						} else {
 							const value = getAttributeValue(element, name);
 							if (value !== undefined && !config.ignoreAttributeValue(value)) {
-								add.call(this, key, value);
+								add.call(this, key, value, elementWhitespaceHandling.getAttribute(name));
 							}
 						}
 					}

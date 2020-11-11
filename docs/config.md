@@ -27,7 +27,18 @@ const config = createConfig(context, options);
             + `"text"` - Content is localized as text.
             + `"html"` - Content is localized as html.
         + attributes `<string[]>` - An array of attribute names that can be localized.
-        + `"*"` as the tag name matches every element that is not explicitly configured.
+        + `"*"` can be used as property to match all elements.
+    + whitespace `<object>` - An object with tag names as properties to specify how whitespace is handled for specific elements.
+        + `<WhitespaceHandling>` - Set whitespace handling for both attributes and content.
+        + attributes `<object>` - An object with attribute names as properties and `<WhitespaceHandling>` as value to set how whitespace is handled for specific attributes.
+            + `"*"` can be used as property to match all attributes.
+        + content `<WhitespaceHandling>` - Set whitespace handling for content.
+        + `"*"` can be used as property to match all elements.
+        + `WhitespaceHandling` can be one of the following values:
+            + `"preserve"` - Extract whitespace as is (default).
+            + `"trim"` - Trim leading and trailing whitespace.
+            + `"collapse"` - Collapse leading, trailing and whitespace in between text to a single space.
+            + `"trim-collapse"` - Trim leading and trailing whitespace and collapse whitespace in between text to a single space.
     + diagnostics `<object>` - An object to specify how diagnostics should handled.
         + all `<HandlingType>` - A fallback value for unconfigured types. Default is `"warn"`.
         + *[Diagnostic.Type]* `<HandlingType>` - Specify how specific diagnostics are handled.
@@ -50,6 +61,13 @@ createConfig(__dirname, {
         },
         img: {
             attributes: ["alt"]
+        }
+    },
+    whitespace: {
+        "*": "trim",
+        pre: {
+            attributes?: "trim",
+            content: "preserve"
         }
     },
     diagnostics: {

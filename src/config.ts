@@ -37,7 +37,7 @@ export interface ConfigOptions {
 	 * A map of elements that can be localized.
 	 * By default, nothing is localized.
 	 *
-	 * `"*"` as the tag name matches every element that is not explicitly configured.
+	 * `"*"` can be used as property to match all elements.
 	 */
 	localize?: Record<string, {
 		/**
@@ -51,6 +51,24 @@ export interface ConfigOptions {
 		 */
 		attributes?: string[];
 	}>;
+
+	/**
+	 * A map of elements to custom whitespace handling during extraction.
+	 *
+	 * `"*"` can be used as property to match all elements.
+	 */
+	whitespace?: Record<string, {
+		/**
+		 * Whitespace handling for all attributes or a map with attribute names.
+		 *
+		 * `"*"` can be used as property to match all attributes.
+		 */
+		attributes?: Record<string, Config.WhitespaceHandling>;
+		/**
+		 *
+		 */
+		content?: Config.WhitespaceHandling;
+	} | Config.WhitespaceHandling>;
 
 	/**
 	 * Configure how diagnostics are handled.
@@ -81,6 +99,8 @@ export interface Config {
 	ignoreAttributeValue: (name: string) => boolean;
 	/** Get the configuration how an element is localized. */
 	getLocalizedElement: (tagName: string) => Config.LocalizedElement | undefined;
+	/** Get whitespace handling config for an element. */
+	getElementWhitespaceHandling: (tagName: string) => Config.ElementWhitespaceHandling;
 	/** A function that is used to determine how a specific diagnostic type is handled. */
 	getDiagnosticHandling: (type: Diagnostic.Type) => Config.DiagnosticHandling;
 }
@@ -88,9 +108,25 @@ export interface Config {
 export namespace Config {
 	export enum DiagnosticHandling { Error = "error", Warning = "warn", Ignore = "ignore" }
 
+	export enum WhitespaceHandling {
+		/** Extract whitespace as is. */
+		Preserve = "preserve",
+		/** Trim leading and trailing whitespace. */
+		Trim = "trim",
+		/** Collapse leading, trailing and whitespace in between text to a single space. */
+		Collapse = "collapse",
+		/** Trim leading and trailing whitespace and collapse whitespace in betweeen text to a single space. */
+		TrimCollapse = "trim-collapse"
+	}
+
 	export interface LocalizedElement {
 		readonly content: ElementContentLocalizationType;
 		readonly attributes: ReadonlySet<string>;
+	}
+
+	export interface ElementWhitespaceHandling {
+		getAttribute: (name: string) => WhitespaceHandling;
+		content: WhitespaceHandling;
 	}
 }
 
@@ -107,6 +143,15 @@ const ELEMENT_CONTENT_LOCALIZATION_TYPES = new Set<ElementContentLocalizationTyp
 	ElementContentLocalizationType.Html,
 	ElementContentLocalizationType.Text
 ]);
+
+const WHITESPACE_HANDLING_TYPES = new Set<Config.WhitespaceHandling>([
+	Config.WhitespaceHandling.Preserve,
+	Config.WhitespaceHandling.Trim,
+	Config.WhitespaceHandling.Collapse,
+	Config.WhitespaceHandling.TrimCollapse
+]);
+
+const WHITESPACE_HANDLING_TYPES_STR = `"preserve", "trim", "collapse" or "trim-collapse"`;
 
 /**
  * Create a configuration from simplified options.
@@ -180,6 +225,63 @@ export function createConfig(context: string, options: ConfigOptions = {}): Conf
 		}
 	}
 
+	let elementWhitespaceHandlingFallback: Config.ElementWhitespaceHandling = {
+		getAttribute: () => Config.WhitespaceHandling.Preserve,
+		content: Config.WhitespaceHandling.Preserve
+	};
+	const elementWhitespaceHandling = new Map<string, Config.ElementWhitespaceHandling>();
+	if (options.whitespace) {
+		for (const tagName in options.whitespace) {
+			const item = options.whitespace[tagName];
+
+			let handling: Config.ElementWhitespaceHandling;
+			if (typeof item === "object" && item !== null) {
+				let attributeFallback: Config.WhitespaceHandling = Config.WhitespaceHandling.Preserve;
+				const attributes = new Map<string, Config.WhitespaceHandling>();
+
+				let content: Config.WhitespaceHandling = Config.WhitespaceHandling.Preserve;
+				if (item.attributes) {
+					for (const attributeName in item.attributes) {
+						const value = item.attributes[attributeName];
+						if (!WHITESPACE_HANDLING_TYPES.has(value)) {
+							throw new TypeError(`whitespace.${tagName}.attributes.${attributeName} must be ${WHITESPACE_HANDLING_TYPES_STR}.`);
+						}
+						if (attributeName === "*") {
+							attributeFallback = value;
+						} else {
+							attributes.set(attributeName, value);
+						}
+					}
+				}
+				if (item.content) {
+					if (!WHITESPACE_HANDLING_TYPES.has(item.content)) {
+						throw new TypeError(`whitespace.${tagName}.content must be ${WHITESPACE_HANDLING_TYPES_STR}.`);
+					}
+					content = item.content;
+				}
+
+				handling = {
+					getAttribute: name => attributes.get(name) || attributeFallback,
+					content
+				};
+			} else {
+				if (!WHITESPACE_HANDLING_TYPES.has(item)) {
+					throw new TypeError(`whitespace.${tagName} must be ${WHITESPACE_HANDLING_TYPES_STR}.`);
+				}
+				handling = {
+					getAttribute: () => item,
+					content: item
+				}
+			}
+
+			if (tagName === "*") {
+				elementWhitespaceHandlingFallback = handling;
+			} else {
+				elementWhitespaceHandling.set(tagName, handling);
+			}
+		}
+	}
+
 	if (options.prefix !== undefined && typeof options.prefix !== "string") {
 		throw new TypeError(`prefix must be a string.`);
 	}
@@ -215,6 +317,7 @@ export function createConfig(context: string, options: ConfigOptions = {}): Conf
 		ignoreTextContent: createIgnoreFunction(ignoreTextContent),
 		ignoreAttributeValue: createIgnoreFunction(ignoreAttributeValue),
 		getLocalizedElement: tagName => localizedElements.get(tagName) || localizedElementFallback,
+		getElementWhitespaceHandling: tagName => elementWhitespaceHandling.get(tagName) || elementWhitespaceHandlingFallback,
 		getDiagnosticHandling: type => diagnosticHandling.get(type) || diagnosticHandlingFallback
 	};
 }

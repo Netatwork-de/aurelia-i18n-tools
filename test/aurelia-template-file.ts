@@ -1,6 +1,6 @@
 import test, { ExecutionContext } from "ava";
 import * as path from "path";
-import { AureliaTemplateFile, createConfig, ElementContentLocalizationType, Diagnostic, Config, ConfigOptions, Diagnostics } from "../src";
+import { AureliaTemplateFile, createConfig, ElementContentLocalizationType, Diagnostic, Config, ConfigOptions } from "../src";
 import { expectNoDiagnostics, code, captureDiagnostics } from "./_utility";
 
 const filename = path.join(__dirname, "template.html");

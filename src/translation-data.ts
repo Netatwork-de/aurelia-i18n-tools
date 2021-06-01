@@ -1,7 +1,7 @@
 import * as path from "path";
 import { LocaleData } from "./locale-data";
 import { Config } from "./config";
-import { Diagnostics, Diagnostic, DiagnosticFormatter } from "./diagnostics";
+import { Diagnostics, Diagnostic } from "./diagnostics";
 
 /**
  * A container for translation data that is used as an

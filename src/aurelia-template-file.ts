@@ -1,4 +1,4 @@
-import { parseFragment, DefaultTreeDocumentFragment, DefaultTreeElement } from "parse5";
+import { parseFragment, DocumentFragment, Element } from "parse5";
 import { traverseElements, getAttributeValue, analyzeElementContent, treeDiagnostics } from "./utility/parse5-tree";
 import { Config, ElementContentLocalizationType } from "./config";
 import { AureliaI18nAttribute } from "./aurelia-i18n-attribute";
@@ -12,14 +12,14 @@ export class AureliaTemplateFile implements Source {
 	private constructor(
 		private readonly _filename: string,
 		private _source: string,
-		private _root: DefaultTreeDocumentFragment
+		private _root: DocumentFragment
 	) {}
 
 	private static parseHtml(source: string) {
 		return parseFragment(source, {
 			scriptingEnabled: false,
 			sourceCodeLocationInfo: true
-		}) as DefaultTreeDocumentFragment;
+		});
 	}
 
 	public static parse(filename: string, source: string) {
@@ -266,7 +266,7 @@ export class AureliaTemplateFile implements Source {
 }
 
 interface JustificationCandidate {
-	readonly element: DefaultTreeElement;
+	readonly element: Element;
 	readonly elementConfig: Config.LocalizedElement;
 	readonly originalAttribute?: AureliaI18nAttribute;
 	readonly hasText: boolean;

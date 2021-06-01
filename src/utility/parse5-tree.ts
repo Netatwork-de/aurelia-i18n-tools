@@ -1,10 +1,10 @@
-import { DefaultTreeNode, DefaultTreeElement, DefaultTreeParentNode } from "parse5";
+import { Element, Node, ParentNode } from "parse5";
 import * as adapter from "parse5/lib/tree-adapters/default";
-import { DiagnosticLocationPair, DiagnosticLocation } from "../diagnostics";
+import { DiagnosticLocationPair } from "../diagnostics";
 
 const IGNORED_NODE_NAMES = new Set(["#comment", "#documentType", "#text"]);
 
-export function * traverseElements(node: DefaultTreeNode, ignoreTagNames: (tagName: string) => boolean): Generator<DefaultTreeElement> {
+export function * traverseElements(node: Node, ignoreTagNames: (tagName: string) => boolean): Generator<Element> {
 	if (IGNORED_NODE_NAMES.has(node.nodeName)) {
 		return;
 	}
@@ -24,11 +24,11 @@ export function * traverseElements(node: DefaultTreeNode, ignoreTagNames: (tagNa
 	}
 }
 
-export function isParentNode(node: DefaultTreeNode): node is DefaultTreeParentNode {
-	return Array.isArray((node as DefaultTreeParentNode).childNodes);
+export function isParentNode(node: Node): node is ParentNode {
+	return Array.isArray((node as ParentNode).childNodes);
 }
 
-export function getAttributeValue(element: DefaultTreeElement, name: string): string | undefined {
+export function getAttributeValue(element: Element, name: string): string | undefined {
 	for (const attribute of element.attrs) {
 		if (attribute.name === name) {
 			return attribute.value;
@@ -36,7 +36,7 @@ export function getAttributeValue(element: DefaultTreeElement, name: string): st
 	}
 }
 
-export function analyzeElementContent(element: DefaultTreeElement, ignoreTextContent: (textContent: string) => boolean) {
+export function analyzeElementContent(element: Element, ignoreTextContent: (textContent: string) => boolean) {
 	let text = "";
 	let hasText = false;
 	let hasElements = false;
@@ -58,7 +58,7 @@ export function analyzeElementContent(element: DefaultTreeElement, ignoreTextCon
 }
 
 export namespace treeDiagnostics {
-	export function content(element: DefaultTreeElement): DiagnosticLocationPair {
+	export function content(element: Element): DiagnosticLocationPair {
 		const info = element.sourceCodeLocation!;
 		return {
 			start: {
@@ -74,7 +74,7 @@ export namespace treeDiagnostics {
 		};
 	}
 
-	export function attribute(element: DefaultTreeElement, name: string): DiagnosticLocationPair {
+	export function attribute(element: Element, name: string): DiagnosticLocationPair {
 		const info = element.sourceCodeLocation!.attrs[name];
 		return {
 			start: {
@@ -90,7 +90,7 @@ export namespace treeDiagnostics {
 		};
 	}
 
-	export function startTag(element: DefaultTreeElement): DiagnosticLocationPair {
+	export function startTag(element: Element): DiagnosticLocationPair {
 		const info = element.sourceCodeLocation!.startTag;
 		return {
 			start: {

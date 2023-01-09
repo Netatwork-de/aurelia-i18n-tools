@@ -75,7 +75,7 @@ export namespace treeDiagnostics {
 	}
 
 	export function attribute(element: Element, name: string): DiagnosticLocationPair {
-		const info = element.sourceCodeLocation!.attrs[name];
+		const info = element.sourceCodeLocation!.attrs![name];
 		return {
 			start: {
 				offset: info.startOffset,

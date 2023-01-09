@@ -43,7 +43,7 @@ export function createGulpI18n(): GulpI18n {
 			const translationData = await fs.readFile(translationDataPath, "utf8");
 			project.translationData = TranslationData.parse(translationData, path.dirname(translationDataPath));
 		} catch (error) {
-			if (error.code !== "ENOENT") {
+			if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
 				throw error;
 			}
 		}

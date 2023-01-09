@@ -215,7 +215,7 @@ export class AureliaTemplateFile implements Source {
 			const location = element.sourceCodeLocation!;
 			let start = 0, end = 0, space: string;
 			if (originalAttribute) {
-				const attributeLocation = element.sourceCodeLocation!.attrs.t;
+				const attributeLocation = element.sourceCodeLocation!.attrs!.t;
 				start = attributeLocation.startOffset;
 				end = attributeLocation.endOffset;
 				while (/\s/.test(this._source.charAt(start - 1))) {

@@ -1,6 +1,7 @@
 
 # 4.0
 + **Breaking Change**: Drop gulp support.
++ **Breaking Change**: Drop support for nodejs 15 or lower.
 
 # 3.0
 + **Breaking Change**: Update parse5 to version 6.

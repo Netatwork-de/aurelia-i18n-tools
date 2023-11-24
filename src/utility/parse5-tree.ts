@@ -1,6 +1,7 @@
 import { defaultTreeAdapter as adapter } from "parse5";
-import { DiagnosticLocationPair } from "../diagnostics";
 import { Element, Node, ParentNode, Template } from "parse5/dist/tree-adapters/default";
+
+import { DiagnosticLocationPair } from "../diagnostics.js";
 
 const IGNORED_NODE_NAMES = new Set(["#comment", "#documentType", "#text"]);
 

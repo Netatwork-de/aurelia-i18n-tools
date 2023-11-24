@@ -1,5 +1,6 @@
-import * as path from "path";
-import { Diagnostic } from "./diagnostics";
+import { resolve } from "node:path";
+
+import { Diagnostic } from "./diagnostics.js";
 
 export interface ConfigOptions {
 	/**
@@ -310,7 +311,7 @@ export function createConfig(context: string, options: ConfigOptions = {}): Conf
 
 	return {
 		context,
-		src: path.resolve(context, options.src || "./src"),
+		src: resolve(context, options.src || "./src"),
 		prefix: options.prefix || "",
 		sourceLocaleId: options.sourceLocale || "en",
 		ignoreElement: createIgnoreFunction(ignoreElements),

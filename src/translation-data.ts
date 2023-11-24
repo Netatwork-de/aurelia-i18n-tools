@@ -1,7 +1,8 @@
-import * as path from "path";
-import { LocaleData } from "./locale-data";
-import { Config } from "./config";
-import { Diagnostics, Diagnostic } from "./diagnostics";
+import { isAbsolute, join, relative } from "node:path";
+
+import { LocaleData } from "./locale-data.js";
+import { Config } from "./config.js";
+import { Diagnostics, Diagnostic } from "./diagnostics.js";
 
 /**
  * A container for translation data that is used as an
@@ -234,7 +235,7 @@ export class TranslationData {
 		}
 
 		for (let name in jsonFiles) {
-			if (path.isAbsolute(name)) {
+			if (isAbsolute(name)) {
 				throw new TypeError(`data contains a non relative filename: ${name}`);
 			}
 			const jsonFile = jsonFiles[name];
@@ -378,11 +379,11 @@ function sortByKey<K, V>([a]: [K, V], [b]: [K, V]) {
 }
 
 function filenameToJson(basePath: string, filename: string) {
-	return path.relative(basePath, filename).replace(/\\/g, "/");
+	return relative(basePath, filename).replace(/\\/g, "/");
 }
 
 function filenameFromJson(basePath: string, name: string) {
-	return path.join(basePath, name);
+	return join(basePath, name);
 }
 
 export namespace TranslationData {

@@ -1,5 +1,9 @@
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
+
 import { ExecutionContext } from "ava";
-import { Diagnostics, Diagnostic, Project, TranslationData } from "../src";
+
+import { Diagnostics, Diagnostic, Project, TranslationData } from "../src/index.js";
 
 export function expectNoDiagnostics(t: ExecutionContext) {
 	const host = new Diagnostics();
@@ -44,3 +48,5 @@ export function code(code: string) {
 		return line.slice(indentation);
 	}).join("\n").trim();
 }
+
+export const testDir = join(fileURLToPath(import.meta.url), "..");

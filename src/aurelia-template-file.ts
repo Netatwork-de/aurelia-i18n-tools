@@ -1,10 +1,11 @@
 import { parseFragment } from "parse5";
-import { traverseElements, getAttributeValue, analyzeElementContent, treeDiagnostics } from "./utility/parse5-tree";
-import { Config, ElementContentLocalizationType } from "./config";
-import { AureliaI18nAttribute } from "./aurelia-i18n-attribute";
-import { Source, SourceJustifyKeysOptions, SourceJustifyKeysResult } from "./source";
-import { Diagnostic } from "./diagnostics";
 import { DocumentFragment, Element } from "parse5/dist/tree-adapters/default";
+
+import { traverseElements, getAttributeValue, analyzeElementContent, treeDiagnostics } from "./utility/parse5-tree.js";
+import { Config, ElementContentLocalizationType } from "./config.js";
+import { AureliaI18nAttribute } from "./aurelia-i18n-attribute.js";
+import { Source, SourceJustifyKeysOptions, SourceJustifyKeysResult } from "./source.js";
+import { Diagnostic } from "./diagnostics.js";
 
 /**
  * Represents a localized aurelia template file.

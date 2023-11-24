@@ -1,5 +1,5 @@
-import { Config } from "./config";
-import { Diagnostics } from "./diagnostics";
+import { Config } from "./config.js";
+import { Diagnostics } from "./diagnostics.js";
 
 export interface Source {
 	/**

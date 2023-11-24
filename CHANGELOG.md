@@ -1,4 +1,7 @@
 
+# 4.0
++ **Breaking Change**: Drop gulp support.
+
 # 3.0
 + **Breaking Change**: Update parse5 to version 6.
 

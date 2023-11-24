@@ -1,8 +1,10 @@
 # Gulp Plugin
 
+> **Gulp support is deprecated** and is no longer available in version 4 and later. Use the command line interface instead.
+
 ## Installation
 ```shell
-npm i -D gulp @netatwork/aurelia-i18n-tools
+npm i -D gulp @netatwork/aurelia-i18n-tools@3
 ```
 
 ## `createGulpI18n()`

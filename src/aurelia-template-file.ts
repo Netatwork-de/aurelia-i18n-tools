@@ -1,9 +1,10 @@
-import { parseFragment, DocumentFragment, Element } from "parse5";
+import { parseFragment } from "parse5";
 import { traverseElements, getAttributeValue, analyzeElementContent, treeDiagnostics } from "./utility/parse5-tree";
 import { Config, ElementContentLocalizationType } from "./config";
 import { AureliaI18nAttribute } from "./aurelia-i18n-attribute";
 import { Source, SourceJustifyKeysOptions, SourceJustifyKeysResult } from "./source";
 import { Diagnostic } from "./diagnostics";
+import { DocumentFragment, Element } from "parse5/dist/tree-adapters/default";
 
 /**
  * Represents a localized aurelia template file.
@@ -223,7 +224,7 @@ export class AureliaTemplateFile implements Source {
 				}
 				space = this._source.slice(start, attributeLocation.startOffset);
 			} else {
-				const tagLocation = location.startTag;
+				const tagLocation = location.startTag!;
 				start = end = tagLocation.endOffset - 1;
 				space = " ";
 			}

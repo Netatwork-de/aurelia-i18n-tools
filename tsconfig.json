@@ -1,19 +1,12 @@
 {
 	"compilerOptions": {
 		"strict": true,
-		"target": "ES2018",
+		"target": "ESNext",
 		"module": "CommonJS",
 		"moduleResolution": "Node",
-		"rootDir": "src",
-		"outDir": "dist",
-		"sourceMap": true,
-		"declaration": true,
-		"removeComments": true,
-		"lib": [
-			"ES2018"
-		]
 	},
 	"include": [
-		"src"
+		"src",
+		"test"
 	]
 }

@@ -4,11 +4,11 @@
 	"description": "A toolchain to help with localization in aurelia projects.",
 	"main": "./dist/index.js",
 	"scripts": {
-		"compile": "tsc",
-		"compile:watch": "tsc -w",
+		"build": "tsc -p tsconfig-build.json",
+		"build:watch": "tsc -p tsconfig-build.json -w",
 		"test": "tsc -p tsconfig-test.json && ava",
 		"start": "tsc -p tsconfig-test.json && concurrently \"tsc -p tsconfig-test.json -w\" \"ava -w\"",
-		"prepack": "npm run compile"
+		"prepack": "npm test && npm run build"
 	},
 	"dependencies": {
 		"ansi-colors": "^4.1.3",

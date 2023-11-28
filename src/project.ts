@@ -6,6 +6,10 @@ import { Diagnostics, Diagnostic, DiagnosticFormatter } from "./diagnostics.js";
 import { PairSet } from "./utility/pair-set.js";
 import { TranslationData } from "./translation-data.js";
 import { LocaleData } from "./locale-data.js";
+import { findFiles } from "./utility/file-system.js";
+import { AureliaTemplateFile } from "./aurelia-template-file.js";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { JsonResourceFile } from "./json-resource-file.js";
 
 export class Project {
 	public readonly config: Config;
@@ -219,6 +223,91 @@ export class Project {
 			}
 		}
 		return locales;
+	}
+
+	/**
+	 * Report all future diagnostics from this project to the console output.
+	 *
+	 * This will also set the process exit code to 1 if any errors are reported.
+	 */
+	public reportDiagnosticsToConsole() {
+		this.diagnostics.on("report", diagnostic => {
+			const handling = this.config.getDiagnosticHandling(diagnostic.type);
+			if (handling === Config.DiagnosticHandling.Error) {
+				process.exitCode = 1;
+			} else if (handling !== Config.DiagnosticHandling.Ignore) {
+				console.log(this.diagnosticFormatter.format(diagnostic));
+			}
+		});
+	}
+
+	/**
+	 * Run the standard production or development workflow for this project.
+	 */
+	public async run() {
+		const sourcePatterns = [
+			"**/*.html",
+			"**/*.r.json",
+		];
+
+		const translationDataPath = this.config.translationData;
+		const translationDataContext = dirname(translationDataPath);
+
+		// TODO: Add option to control if watching is enabled.
+		const watch = this.development;
+		if (watch) {
+			// TODO: Implement watch mode.
+			throw new Error("not implemented");
+
+		} else {
+			try {
+				this.translationData = TranslationData.parse(await readFile(translationDataPath, "utf-8"), translationDataContext);
+			} catch (error) {
+				if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
+					throw error;
+				}
+			}
+
+			const sources = await findFiles(this.config.src, sourcePatterns);
+			for (const filename of sources) {
+				const content = await readFile(filename, "utf-8");
+				if (filename.endsWith(".html")) {
+					this.updateSource(AureliaTemplateFile.parse(filename, content));
+				} else {
+					this.updateSource(JsonResourceFile.parse(filename, content));
+				}
+			}
+
+			for (const locale in this.config.externalLocales) {
+				const patterns = this.config.externalLocales[locale];
+				const files = await findFiles(this.config.context, patterns, true);
+				for (const file of files) {
+					const data = JSON.parse(await readFile(file, "utf-8"));
+					this.addExternalLocale(locale, data);
+				}
+			}
+
+			this.processSources({
+				// TODO: Move to config:
+				enforcePrefix: true,
+			});
+
+			await this.handleModified({
+				writeSource: async source => {
+					await writeFile(source.filename, source.source);
+				},
+				writeTranslationData: async data => {
+					await writeFile(translationDataPath, data.formatJson(translationDataContext));
+				},
+			});
+
+			const locales = this.compileLocales();
+			for (const [locale, data] of locales) {
+				const filename = this.config.getOutputFilename(locale);
+				await mkdir(dirname(filename), { recursive: true });
+				await writeFile(filename, JSON.stringify(data));
+			}
+		}
 	}
 }
 

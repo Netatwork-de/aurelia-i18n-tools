@@ -1,7 +1,7 @@
 import { EventEmitter } from "node:events";
 import { inspect } from "node:util";
 
-import * as colors from "ansi-colors";
+import colors from "ansi-colors";
 import { relative } from "node:path";
 
 export interface Diagnostic<T extends Diagnostic.Type> extends DiagnosticLocationPair {

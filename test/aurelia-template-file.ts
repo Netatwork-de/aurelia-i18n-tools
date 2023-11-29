@@ -1,10 +1,12 @@
-import test, { ExecutionContext } from "ava";
-import * as path from "path";
-import { AureliaTemplateFile, createConfig, ElementContentLocalizationType, Diagnostic, Config, ConfigOptions } from "../src";
-import { expectNoDiagnostics, code, captureDiagnostics } from "./_utility";
+import { join } from "node:path";
 
-const filename = path.join(__dirname, "template.html");
-const config = createConfig(__dirname, {
+import test, { ExecutionContext } from "ava";
+
+import { expectNoDiagnostics, code, captureDiagnostics, testDir } from "./_utility.js";
+import { AureliaTemplateFile, createConfig, ElementContentLocalizationType, Diagnostic, Config, ConfigOptions } from "../src/index.js";
+
+const filename = join(testDir, "template.html");
+const config = createConfig(testDir, {
 	src: ".",
 	localize: {
 		div: {
@@ -87,7 +89,6 @@ test("replace keys with wrong prefixes", t => {
 	const result = source.justifyKeys(config, {
 		prefix: "test.",
 		diagnostics: expectNoDiagnostics(t),
-		enforcePrefix: true
 	});
 	t.true(result.modified);
 	t.is(result.replacedKeys.size, 1);
@@ -133,7 +134,7 @@ test("keep linebreaks when replacing keys", t => {
 });
 
 function whitespaceHandling(t: ExecutionContext, whitespace: ConfigOptions["whitespace"], markup: string, expectedValues: string[]) {
-	const config = createConfig(__dirname, { src: ".", whitespace });
+	const config = createConfig(testDir, { src: ".", whitespace });
 	const source = AureliaTemplateFile.parse(filename, code(markup));
 	t.deepEqual(Array.from(source.extractKeys(config).values()), expectedValues);
 }

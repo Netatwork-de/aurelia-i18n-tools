@@ -1,6 +1,7 @@
 import test from "ava";
 import { join } from "path";
-import { TranslationData } from "../src";
+import { TranslationData } from "../src/index.js";
+import { testDir } from "./_utility.js";
 
 test("parse v1", t => {
 	var data = TranslationData.parse(JSON.stringify(<TranslationData.JsonV1> {
@@ -14,11 +15,11 @@ test("parse v1", t => {
 				}
 			}
 		}
-	}), __dirname);
+	}), testDir);
 
 	t.is(data.parsedVersion, 1);
 
-	const file = data.files.get(join(__dirname, "src/test.html"))!;
+	const file = data.files.get(join(testDir, "src/test.html"))!;
 	t.true(file.content.has("test.t0"));
 });
 
@@ -51,11 +52,11 @@ test("parse v2", t => {
 				}
 			}
 		]
-	}), __dirname);
+	}), testDir);
 
 	t.is(data.parsedVersion, 2);
 
-	const file = data.files.get(join(__dirname, "src/test.html"))!;
+	const file = data.files.get(join(testDir, "src/test.html"))!;
 	t.is(file.content.get("test.t0")!.source.content, "foo");
 	t.is(file.content.get("test.t0")!.translations.get("de")!.content, "bar");
 
@@ -66,7 +67,7 @@ test("parse v2", t => {
 
 test("stringify", t => {
 	var data = new TranslationData(new Map<string, TranslationData.File>([
-		[join(__dirname, "src/test.html"), {
+		[join(testDir, "src/test.html"), {
 			content: new Map<string, TranslationData.TranslationSet>([
 				["test.t0", {
 					source: {
@@ -105,7 +106,7 @@ test("stringify", t => {
 		}
 	]);
 
-	const json: TranslationData.JsonV2 = JSON.parse(data.formatJson(__dirname));
+	const json: TranslationData.JsonV2 = JSON.parse(data.formatJson(testDir));
 	t.is(json.version, 2);
 	t.is(json.files["src/test.html"].content["test.t0"].content, "foo");
 	t.is(json.files["src/test.html"].content["test.t0"].translations["de"].content, "bar");

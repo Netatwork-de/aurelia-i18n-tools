@@ -1,5 +1,6 @@
-import * as path from "path";
-import { Diagnostic } from "./diagnostics";
+import { resolve } from "node:path";
+
+import { Diagnostic } from "./diagnostics.js";
 
 export interface ConfigOptions {
 	/**
@@ -7,6 +8,21 @@ export interface ConfigOptions {
 	 * @default "./src"
 	 */
 	src?: string;
+
+	/**
+	 * The filename of the translation data file.
+	 * @default "./i18n.json"
+	 */
+	translationData?: string;
+
+	/**
+	 * The filename template for compiled locale data.
+	 *
+	 * The `[locale]` placeholder is replaced with the locale code.
+	 *
+	 * @default "./dist/[locale]/translation.json"
+	 */
+	output?: string;
 
 	/**
 	 * A prefix that should be used for all keys in this project.
@@ -76,6 +92,13 @@ export interface ConfigOptions {
 	diagnostics?: {
 		[t in Diagnostic.Type | "all"]?: Config.DiagnosticHandling;
 	};
+
+	/**
+	 * An object with locales as keys and patterns to include as external locales.
+	 *
+	 * Default is an empty object.
+	 */
+	externalLocales?: Record<string, string[]>;
 }
 
 export namespace ConfigOptions {
@@ -87,6 +110,10 @@ export interface Config {
 	readonly context: string;
 	/** Absolute path of the source root directory */
 	readonly src: string;
+	/** Absolute path of the translation data file */
+	readonly translationData: string;
+	/** A function to get the absolute output filename for compiled locale data. */
+	readonly getOutputFilename: (locale: string) => string;
 	/** A common prefix used for all keys */
 	readonly prefix: string;
 	/** An id for the locale that is used in source files. */
@@ -103,6 +130,8 @@ export interface Config {
 	getElementWhitespaceHandling: (tagName: string) => Config.ElementWhitespaceHandling;
 	/** A function that is used to determine how a specific diagnostic type is handled. */
 	getDiagnosticHandling: (type: Diagnostic.Type) => Config.DiagnosticHandling;
+	/** An object with locales as keys and patterns to include as external locales. */
+	readonly externalLocales: Record<string, string[]>;
 }
 
 export namespace Config {
@@ -152,6 +181,13 @@ const WHITESPACE_HANDLING_TYPES = new Set<Config.WhitespaceHandling>([
 ]);
 
 const WHITESPACE_HANDLING_TYPES_STR = `"preserve", "trim", "collapse" or "trim-collapse"`;
+
+/**
+ * Utility for providing auto completion for js config files.
+ */
+export function defineConfig(options: ConfigOptions): ConfigOptions {
+	return options;
+}
 
 /**
  * Create a configuration from simplified options.
@@ -310,7 +346,10 @@ export function createConfig(context: string, options: ConfigOptions = {}): Conf
 
 	return {
 		context,
-		src: path.resolve(context, options.src || "./src"),
+		src: resolve(context, options.src || "./src"),
+		translationData: resolve(context, options.translationData || "./i18n.json"),
+		getOutputFilename: locale => resolve(context, (options.output ?? "./dist/[locale]/translation.json").replace(/\[locale\]/g, locale)),
+		externalLocales: options.externalLocales ?? {},
 		prefix: options.prefix || "",
 		sourceLocaleId: options.sourceLocale || "en",
 		ignoreElement: createIgnoreFunction(ignoreElements),

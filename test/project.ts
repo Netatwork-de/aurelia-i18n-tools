@@ -1,10 +1,12 @@
+import { join } from "node:path";
+
 import test from "ava";
-import * as path from "path";
-import { Project, createConfig, AureliaTemplateFile, ElementContentLocalizationType, TranslationData } from "../src";
-import { code, handleModified } from "./_utility";
+
+import { code, testDir, handleModified } from "./_utility.js";
+import { Project, createConfig, AureliaTemplateFile, ElementContentLocalizationType, TranslationData } from "../src/index.js";
 
 test("justify sources and update translation data", async t => {
-	const config = createConfig(__dirname, {
+	const config = createConfig(testDir, {
 		src: ".",
 		prefix: "app.",
 		localize: {
@@ -17,16 +19,14 @@ test("justify sources and update translation data", async t => {
 		development: true
 	});
 
-	const filename = path.join(__dirname, "test.html");
+	const filename = join(testDir, "test.html");
 	project.updateSource(AureliaTemplateFile.parse(filename, code(`
 		<template>
 			<div>test</div>
 		</template>
 	`)));
 
-	project.processSources({
-		enforcePrefix: true
-	});
+	project.processSources();
 
 	const { sources, translationData } = await handleModified(project);
 
@@ -41,7 +41,7 @@ test("justify sources and update translation data", async t => {
 });
 
 test("use fallback for unknown elements", async t => {
-	const config = createConfig(__dirname, {
+	const config = createConfig(testDir, {
 		src: ".",
 		prefix: "app.",
 		localize: {
@@ -56,7 +56,7 @@ test("use fallback for unknown elements", async t => {
 		development: true
 	});
 
-	const filename = path.join(__dirname, "test.html");
+	const filename = join(testDir, "test.html");
 	project.updateSource(AureliaTemplateFile.parse(filename, code(`
 		<template>
 			<div>foo</div>
@@ -65,9 +65,7 @@ test("use fallback for unknown elements", async t => {
 		</template>
 	`)));
 
-	project.processSources({
-		enforcePrefix: true
-	});
+	project.processSources();
 
 	const { sources } = await handleModified(project);
 
@@ -82,7 +80,7 @@ test("use fallback for unknown elements", async t => {
 });
 
 test("skip adding removed translations to obsolete items if no translations exist", async t => {
-	const config = createConfig(__dirname, {
+	const config = createConfig(testDir, {
 		src: ".",
 		prefix: "app.",
 		localize: {
@@ -91,14 +89,14 @@ test("skip adding removed translations to obsolete items if no translations exis
 	});
 	const project = new Project({ config, development: true });
 
-	const filename1 = path.join(__dirname, "test1.html");
+	const filename1 = join(testDir, "test1.html");
 	project.updateSource(AureliaTemplateFile.parse(filename1, code(`
 		<template>
 			<div>foo</div>
 		</template>
 	`)));
 
-	const filename2 = path.join(__dirname, "test2.html");
+	const filename2 = join(testDir, "test2.html");
 	project.updateSource(AureliaTemplateFile.parse(filename2, code(`
 		<template>
 			<div>bar</div>
@@ -120,7 +118,7 @@ test("skip adding removed translations to obsolete items if no translations exis
 });
 
 test("add removed translations to obsolete items if translations exist", async t => {
-	const config = createConfig(__dirname, {
+	const config = createConfig(testDir, {
 		src: ".",
 		prefix: "app.",
 		localize: {
@@ -129,14 +127,14 @@ test("add removed translations to obsolete items if translations exist", async t
 	});
 	const project = new Project({ config, development: true });
 
-	const filename1 = path.join(__dirname, "test1.html");
+	const filename1 = join(testDir, "test1.html");
 	project.updateSource(AureliaTemplateFile.parse(filename1, code(`
 		<template>
 			<div>foo</div>
 		</template>
 	`)));
 
-	const filename2 = path.join(__dirname, "test2.html");
+	const filename2 = join(testDir, "test2.html");
 	project.updateSource(AureliaTemplateFile.parse(filename2, code(`
 		<template>
 			<div>bar</div>
@@ -172,7 +170,7 @@ test("add removed translations to obsolete items if translations exist", async t
 });
 
 test("use existing translations for reserved keys", async t => {
-	const config = createConfig(__dirname, {
+	const config = createConfig(testDir, {
 		src: ".",
 		prefix: "app.",
 		localize: {
@@ -185,14 +183,14 @@ test("use existing translations for reserved keys", async t => {
 		development: true
 	});
 
-	const filename1 = path.join(__dirname, "foo/test.html");
+	const filename1 = join(testDir, "foo/test.html");
 	project.updateSource(AureliaTemplateFile.parse(filename1, code(`
 		<template>
 			<div t="app.test.t0">test</div>
 		</template>
 	`)));
 
-	const filename2 = path.join(__dirname, "bar/test.html");
+	const filename2 = join(testDir, "bar/test.html");
 	project.updateSource(AureliaTemplateFile.parse(filename2, code(`
 		<template>
 			<div t="app.test.t0">test</div>
@@ -218,9 +216,7 @@ test("use existing translations for reserved keys", async t => {
 		])
 	});
 
-	project.processSources({
-		enforcePrefix: true
-	});
+	project.processSources();
 
 	const { sources, translationData } = await handleModified(project);
 
@@ -235,7 +231,7 @@ test("use existing translations for reserved keys", async t => {
 });
 
 test("use existing translations for replaced prefixes", async t => {
-	const config = createConfig(__dirname, {
+	const config = createConfig(testDir, {
 		src: ".",
 		prefix: "app.",
 		localize: {
@@ -248,14 +244,14 @@ test("use existing translations for replaced prefixes", async t => {
 		development: true
 	});
 
-	const filename1 = path.join(__dirname, "test.html");
+	const filename1 = join(testDir, "test.html");
 	project.updateSource(AureliaTemplateFile.parse(filename1, code(`
 		<template>
 			<div t="app.foo.t0">test</div>
 		</template>
 	`)));
 
-	project.translationData.files.set(path.join(__dirname, "foo.html"), {
+	project.translationData.files.set(join(testDir, "foo.html"), {
 		content: new Map([
 			["app.foo.t0", {
 				source: <TranslationData.Translation> {
@@ -274,9 +270,7 @@ test("use existing translations for replaced prefixes", async t => {
 		])
 	});
 
-	project.processSources({
-		enforcePrefix: true
-	});
+	project.processSources();
 
 	const { sources, translationData } = await handleModified(project);
 
@@ -291,11 +285,11 @@ test("use existing translations for replaced prefixes", async t => {
 });
 
 test("prefixes", t => {
-	const config = createConfig(__dirname, { src: "src", prefix: "app." });
+	const config = createConfig(testDir, { src: "src", prefix: "app." });
 	const project = new Project({ config });
 
 	function getPrefix(name: string) {
-		return project.getPrefix(path.join(__dirname, name));
+		return project.getPrefix(join(testDir, name));
 	}
 
 	t.is(getPrefix("src/test.html"), "app.test.");

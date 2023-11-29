@@ -2,5 +2,6 @@
 /test
 /test_out
 /node_modules
+/ava.*
 /tsconfig*
 /src

@@ -1,6 +1,7 @@
-import { Element, Node, ParentNode } from "parse5";
-import * as adapter from "parse5/lib/tree-adapters/default";
-import { DiagnosticLocationPair } from "../diagnostics";
+import { defaultTreeAdapter as adapter } from "parse5";
+import { Element, Node, ParentNode, Template } from "parse5/dist/tree-adapters/default";
+
+import { DiagnosticLocationPair } from "../diagnostics.js";
 
 const IGNORED_NODE_NAMES = new Set(["#comment", "#documentType", "#text"]);
 
@@ -14,7 +15,7 @@ export function * traverseElements(node: Node, ignoreTagNames: (tagName: string)
 		}
 		yield node;
 		if (node.nodeName === "template") {
-			yield * traverseElements(adapter.getTemplateContent(node), ignoreTagNames);
+			yield * traverseElements(adapter.getTemplateContent(node as Template), ignoreTagNames);
 		}
 	}
 	if (isParentNode(node)) {
@@ -62,20 +63,20 @@ export namespace treeDiagnostics {
 		const info = element.sourceCodeLocation!;
 		return {
 			start: {
-				offset: info.startTag.endOffset,
-				line: info.startTag.endLine,
-				col: info.startTag.endCol
+				offset: info.startTag!.endOffset,
+				line: info.startTag!.endLine,
+				col: info.startTag!.endCol
 			},
 			end: {
-				offset: info.endTag.startOffset,
-				line: info.endTag.startLine,
-				col: info.endTag.startCol
+				offset: info.endTag!.startOffset,
+				line: info.endTag!.startLine,
+				col: info.endTag!.startCol
 			}
 		};
 	}
 
 	export function attribute(element: Element, name: string): DiagnosticLocationPair {
-		const info = element.sourceCodeLocation!.attrs[name];
+		const info = element.sourceCodeLocation!.attrs![name];
 		return {
 			start: {
 				offset: info.startOffset,
@@ -91,7 +92,7 @@ export namespace treeDiagnostics {
 	}
 
 	export function startTag(element: Element): DiagnosticLocationPair {
-		const info = element.sourceCodeLocation!.startTag;
+		const info = element.sourceCodeLocation!.startTag!;
 		return {
 			start: {
 				offset: info.startOffset,

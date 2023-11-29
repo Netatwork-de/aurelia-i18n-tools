@@ -1,10 +1,15 @@
-import * as path from "path";
-import { Config } from "./config";
-import { Source } from "./source";
-import { Diagnostics, Diagnostic, DiagnosticFormatter } from "./diagnostics";
-import { PairSet } from "./utility/pair-set";
-import { TranslationData } from "./translation-data";
-import { LocaleData } from "./locale-data";
+import { basename, dirname, extname, relative } from "node:path";
+
+import { Config } from "./config.js";
+import { Source } from "./source.js";
+import { Diagnostics, Diagnostic, DiagnosticFormatter } from "./diagnostics.js";
+import { PairSet } from "./utility/pair-set.js";
+import { TranslationData } from "./translation-data.js";
+import { LocaleData } from "./locale-data.js";
+import { createMatchers, findFiles, joinPattern, watchFiles } from "./utility/file-system.js";
+import { AureliaTemplateFile } from "./aurelia-template-file.js";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { JsonResourceFile } from "./json-resource-file.js";
 
 export class Project {
 	public readonly config: Config;
@@ -20,8 +25,8 @@ export class Project {
 	private readonly _unprocessedSources = new Set<string>();
 	/** A set of filenames of sources that have been modified in memory. */
 	private readonly _modifiedSources = new Set<string>();
-	/** An array of external locales. */
-	private readonly _externalLocales: { localeId: string, data: LocaleData }[] = [];
+	/** Map from locales to filenames to external locale data. */
+	private readonly _externalLocales = new Map<string, Map<string, LocaleData>>();
 
 	private _translationData = new TranslationData();
 	private _translationDataModified = false;
@@ -45,12 +50,12 @@ export class Project {
 	}
 
 	public getPrefix(filename: string) {
-		if (/^\.\.($|[\\\/])/.test(path.relative(this.config.src, filename))) {
+		if (/^\.\.($|[\\\/])/.test(relative(this.config.src, filename))) {
 			throw new Error(`Filename is outside of the project source directory: ${filename}`);
 		}
 
-		const ext = path.extname(filename);
-		const name = path.basename(filename, ext);
+		const ext = extname(filename);
+		const name = basename(filename, ext);
 
 		function sanitizeName(value: string) {
 			return value
@@ -61,9 +66,9 @@ export class Project {
 
 		// Use the name of the directory as prefix if this is an index file not at the project root:
 		if (name === "index") {
-			const dirname = path.dirname(filename);
-			if (dirname.length > this.config.src.length) {
-				return `${this.config.prefix}${sanitizeName(path.basename(dirname))}.`;
+			const dir = dirname(filename);
+			if (dir.length > this.config.src.length) {
+				return `${this.config.prefix}${sanitizeName(basename(dir))}.`;
 			}
 		}
 
@@ -106,7 +111,7 @@ export class Project {
 	/**
 	 * Should be called by a task runner to process updated sources.
 	 */
-	public processSources(options: ProjectProcessSourcesOptions = {}) {
+	public processSources() {
 		for (const [filename, file] of this._translationData.files) {
 			for (const key of file.content.keys()) {
 				this._knownKeys.add(filename, key);
@@ -128,7 +133,6 @@ export class Project {
 						}
 						return false;
 					},
-					enforcePrefix: options.enforcePrefix
 				});
 				if (result.modified) {
 					for (const [oldKey, newKeys] of result.replacedKeys) {
@@ -199,8 +203,13 @@ export class Project {
 	/**
 	 * Add external locale data.
 	 */
-	public addExternalLocale(localeId: string, data: LocaleData) {
-		this._externalLocales.push({ localeId, data });
+	public addExternalLocale(localeId: string, filename: string, data: LocaleData) {
+		const entries = this._externalLocales.get(localeId);
+		if (entries) {
+			entries.set(filename, data);
+		} else {
+			this._externalLocales.set(localeId, new Map([[filename, data]]));
+		}
 	}
 
 	/**
@@ -209,15 +218,142 @@ export class Project {
 	 */
 	public compileLocales() {
 		const locales = this._translationData.compile(this.config, this.diagnostics);
-		for (const { localeId, data } of this._externalLocales) {
-			const target = locales.get(localeId);
-			if (target) {
-				LocaleData.merge(target, data, this.diagnostics);
-			} else {
-				locales.set(localeId, LocaleData.clone(data));
+		for (const [localeId, files] of this._externalLocales) {
+			for (const data of files.values()) {
+				const target = locales.get(localeId);
+				if (target) {
+					LocaleData.merge(target, data, this.diagnostics);
+				} else {
+					locales.set(localeId, LocaleData.clone(data));
+				}
 			}
 		}
 		return locales;
+	}
+
+	/**
+	 * Report all future diagnostics from this project to the console output.
+	 *
+	 * This will also set the process exit code to 1 if any errors are reported.
+	 */
+	public reportDiagnosticsToConsole() {
+		this.diagnostics.on("report", diagnostic => {
+			const handling = this.config.getDiagnosticHandling(diagnostic.type);
+			if (handling === Config.DiagnosticHandling.Error) {
+				process.exitCode = 1;
+			} else if (handling !== Config.DiagnosticHandling.Ignore) {
+				console.log(this.diagnosticFormatter.format(diagnostic));
+			}
+		});
+	}
+
+	/**
+	 * Run the standard production or development workflow for this project.
+	 */
+	public async run(options?: ProjectRunOptions) {
+		const sourcePatterns = [
+			"**/*.html",
+			"**/*.r.json",
+		];
+
+		const translationDataPath = this.config.translationData;
+		const translationDataContext = dirname(translationDataPath);
+
+		async function reloadTranslationData(this: Project) {
+			try {
+				this.translationData = TranslationData.parse(await readFile(translationDataPath, "utf-8"), translationDataContext);
+			} catch (error) {
+				if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
+					throw error;
+				}
+			}
+		}
+
+		async function updateExternalLocale(this: Project, locale: string, filename: string) {
+			const data = JSON.parse(await readFile(filename, "utf-8"));
+			this.addExternalLocale(locale, filename, data);
+		}
+
+		async function updateSource(this: Project, filename: string) {
+			const content = await readFile(filename, "utf-8");
+			if (filename.endsWith(".html")) {
+				this.updateSource(AureliaTemplateFile.parse(filename, content));
+			} else {
+				this.updateSource(JsonResourceFile.parse(filename, content));
+			}
+		}
+
+		async function processUpdates(this: Project) {
+			this.processSources();
+
+			await this.handleModified({
+				writeSource: async source => {
+					await writeFile(source.filename, source.source);
+				},
+				writeTranslationData: async data => {
+					await writeFile(translationDataPath, data.formatJson(translationDataContext));
+				},
+			});
+
+			const locales = this.compileLocales();
+			for (const [locale, data] of locales) {
+				const filename = this.config.getOutputFilename(locale);
+				await mkdir(dirname(filename), { recursive: true });
+				await writeFile(filename, JSON.stringify(data), "utf-8");
+			}
+		}
+
+		const watch = options?.watch ?? this.development;
+		if (watch) {
+			const externalLocaleMatchers = new Map(
+				Object
+					.entries(this.config.externalLocales)
+					.map(([locale, patterns]) => [locale, createMatchers(this.config.context, patterns)])
+			);
+
+			watchFiles({
+				cwd: this.config.context,
+				patterns: [
+					translationDataPath,
+					...sourcePatterns.map(pattern => joinPattern(this.config.src, pattern)),
+					...Object.values(this.config.externalLocales).flat(),
+				],
+				handleUpdates: async updates => {
+					for (const filename of updates.deleted) {
+						this.deleteSource(filename);
+					}
+					files: for (const filename of updates.updated) {
+						if (filename === translationDataPath) {
+							await reloadTranslationData.call(this);
+							continue files;
+						}
+						for (const [locale, test] of externalLocaleMatchers) {
+							if (test(filename)) {
+								await updateExternalLocale.call(this, locale, filename);
+								continue files;
+							}
+						}
+						await updateSource.call(this, filename);
+					}
+					await processUpdates.call(this);
+				},
+			});
+			return new Promise(() => {});
+		} else {
+			await reloadTranslationData.call(this);
+			const sources = await findFiles(this.config.src, sourcePatterns);
+			for (const filename of sources) {
+				await updateSource.call(this, filename);
+			}
+			for (const locale in this.config.externalLocales) {
+				const patterns = this.config.externalLocales[locale];
+				const files = await findFiles(this.config.context, patterns, true);
+				for (const filename of files) {
+					await updateExternalLocale.call(this, locale, filename);
+				}
+			}
+			await processUpdates.call(this);
+		}
 	}
 }
 
@@ -228,12 +364,16 @@ export interface ProjectOptions {
 	readonly development?: boolean;
 }
 
-export interface ProjectProcessSourcesOptions {
-	/** If true, keys not starting with the specified prefix are replaced. */
-	readonly enforcePrefix?: boolean;
-}
-
 export interface ProjectHandleModifiedHooks {
 	readonly writeSource?: (source: Source) => void | Promise<void>;
 	readonly writeTranslationData?: (data: TranslationData) => void | Promise<void>;
+}
+
+export interface ProjectRunOptions {
+	/**
+	 * If true, sources, translation data and external locales are watched for changes.
+	 *
+	 * Default is true in development mode and false in production mode.
+	 */
+	watch?: boolean;
 }

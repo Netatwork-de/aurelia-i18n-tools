@@ -1,9 +1,11 @@
-import { parseFragment, DocumentFragment, Element } from "parse5";
-import { traverseElements, getAttributeValue, analyzeElementContent, treeDiagnostics } from "./utility/parse5-tree";
-import { Config, ElementContentLocalizationType } from "./config";
-import { AureliaI18nAttribute } from "./aurelia-i18n-attribute";
-import { Source, SourceJustifyKeysOptions, SourceJustifyKeysResult } from "./source";
-import { Diagnostic } from "./diagnostics";
+import { parseFragment } from "parse5";
+import { DocumentFragment, Element } from "parse5/dist/tree-adapters/default";
+
+import { traverseElements, getAttributeValue, analyzeElementContent, treeDiagnostics } from "./utility/parse5-tree.js";
+import { Config, ElementContentLocalizationType } from "./config.js";
+import { AureliaI18nAttribute } from "./aurelia-i18n-attribute.js";
+import { Source, SourceJustifyKeysOptions, SourceJustifyKeysResult } from "./source.js";
+import { Diagnostic } from "./diagnostics.js";
 
 /**
  * Represents a localized aurelia template file.
@@ -76,7 +78,7 @@ export class AureliaTemplateFile implements Source {
 		return keys;
 	}
 
-	public justifyKeys(config: Config, { prefix, diagnostics, diagnosticsOnly, isReserved, enforcePrefix }: SourceJustifyKeysOptions): SourceJustifyKeysResult {
+	public justifyKeys(config: Config, { prefix, diagnostics, diagnosticsOnly, isReserved }: SourceJustifyKeysOptions): SourceJustifyKeysResult {
 		const knownKeys = new Set<string>();
 		const candidates: JustificationCandidate[] = [];
 
@@ -142,8 +144,7 @@ export class AureliaTemplateFile implements Source {
 		function getUniqueKey(preferredKey?: string) {
 			let key = preferredKey;
 			function mustBeReplaced(key: string) {
-				return (enforcePrefix && !key.startsWith(prefix))
-					|| (isReserved && isReserved(key));
+				return !key.startsWith(prefix) || (isReserved && isReserved(key));
 			}
 			const replace = preferredKey && mustBeReplaced(preferredKey);
 			if (!key || generatedKeys.has(key) || replace) {
@@ -215,7 +216,7 @@ export class AureliaTemplateFile implements Source {
 			const location = element.sourceCodeLocation!;
 			let start = 0, end = 0, space: string;
 			if (originalAttribute) {
-				const attributeLocation = element.sourceCodeLocation!.attrs.t;
+				const attributeLocation = element.sourceCodeLocation!.attrs!.t;
 				start = attributeLocation.startOffset;
 				end = attributeLocation.endOffset;
 				while (/\s/.test(this._source.charAt(start - 1))) {
@@ -223,7 +224,7 @@ export class AureliaTemplateFile implements Source {
 				}
 				space = this._source.slice(start, attributeLocation.startOffset);
 			} else {
-				const tagLocation = location.startTag;
+				const tagLocation = location.startTag!;
 				start = end = tagLocation.endOffset - 1;
 				space = " ";
 			}

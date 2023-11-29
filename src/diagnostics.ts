@@ -1,7 +1,8 @@
-import { EventEmitter } from "events";
-import * as colors from "ansi-colors";
-import * as path from "path";
-import { inspect } from "util";
+import { EventEmitter } from "node:events";
+import { inspect } from "node:util";
+
+import colors from "ansi-colors";
+import { relative } from "node:path";
 
 export interface Diagnostic<T extends Diagnostic.Type> extends DiagnosticLocationPair {
 	readonly type: T;
@@ -132,7 +133,7 @@ export class DiagnosticFormatter {
 	public format<T extends Diagnostic.Type>(diagnostic: Diagnostic<T>) {
 		let fileInfo = "";
 		if (diagnostic.filename) {
-			const filename = (this.context ? path.relative(this.context, diagnostic.filename) : diagnostic.filename);
+			const filename = (this.context ? relative(this.context, diagnostic.filename) : diagnostic.filename);
 			fileInfo = ` ${colors.cyan.underline(filename)}`;
 			if (diagnostic.start) {
 				fileInfo += `:${colors.yellowBright(String(diagnostic.start.line))}:${colors.yellowBright(String(diagnostic.start.col))}`;

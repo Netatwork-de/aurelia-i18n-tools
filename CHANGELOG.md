@@ -1,4 +1,10 @@
 
+# 4.0
++ Add command line interface.
++ Add standard workflows to project API.
++ **Breaking Change**: Drop gulp support.
++ **Breaking Change**: Drop support for nodejs 15 or lower.
+
 # 3.0
 + **Breaking Change**: Update parse5 to version 6.
 

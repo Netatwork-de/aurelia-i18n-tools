@@ -11,15 +11,18 @@ import { ConfigOptions, createConfig } from "./config.js";
 
 (async () => {
 	const args = parse(process.argv.slice(2), {
-		boolean: ["dev", "verbose"],
+		boolean: ["dev", "watch", "verbose"],
 		string: ["config"],
 		alias: {
 			config: "c",
 			dev: "d",
+			watch: "w",
 			verbose: "v",
 		},
 	});
+
 	const development = args.dev ?? false;
+	const watch = args.watch ?? development;
 	const verbose = args.verbose ?? false;
 
 	const configFilename = resolve(args.config ?? "i18n-config.mjs");
@@ -49,7 +52,7 @@ import { ConfigOptions, createConfig } from "./config.js";
 	const config = createConfig(dirname(configFilename), options);
 	const project = new Project({ config, development });
 	project.reportDiagnosticsToConsole();
-	await project.run();
+	await project.run({ watch });
 })().catch(error => {
 	console.error(error);
 	process.exit(1);

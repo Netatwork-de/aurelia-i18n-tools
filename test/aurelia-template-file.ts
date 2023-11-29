@@ -89,7 +89,6 @@ test("replace keys with wrong prefixes", t => {
 	const result = source.justifyKeys(config, {
 		prefix: "test.",
 		diagnostics: expectNoDiagnostics(t),
-		enforcePrefix: true
 	});
 	t.true(result.modified);
 	t.is(result.replacedKeys.size, 1);

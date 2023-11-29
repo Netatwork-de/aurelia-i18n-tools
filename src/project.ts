@@ -6,7 +6,7 @@ import { Diagnostics, Diagnostic, DiagnosticFormatter } from "./diagnostics.js";
 import { PairSet } from "./utility/pair-set.js";
 import { TranslationData } from "./translation-data.js";
 import { LocaleData } from "./locale-data.js";
-import { findFiles } from "./utility/file-system.js";
+import { createMatchers, findFiles, joinPattern, watchFiles } from "./utility/file-system.js";
 import { AureliaTemplateFile } from "./aurelia-template-file.js";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { JsonResourceFile } from "./json-resource-file.js";
@@ -111,7 +111,7 @@ export class Project {
 	/**
 	 * Should be called by a task runner to process updated sources.
 	 */
-	public processSources(options: ProjectProcessSourcesOptions = {}) {
+	public processSources() {
 		for (const [filename, file] of this._translationData.files) {
 			for (const key of file.content.keys()) {
 				this._knownKeys.add(filename, key);
@@ -133,7 +133,6 @@ export class Project {
 						}
 						return false;
 					},
-					enforcePrefix: options.enforcePrefix
 				});
 				if (result.modified) {
 					for (const [oldKey, newKeys] of result.replacedKeys) {
@@ -244,7 +243,7 @@ export class Project {
 	/**
 	 * Run the standard production or development workflow for this project.
 	 */
-	public async run() {
+	public async run(options?: ProjectRunOptions) {
 		const sourcePatterns = [
 			"**/*.html",
 			"**/*.r.json",
@@ -253,13 +252,7 @@ export class Project {
 		const translationDataPath = this.config.translationData;
 		const translationDataContext = dirname(translationDataPath);
 
-		// TODO: Add option to control if watching is enabled.
-		const watch = this.development;
-		if (watch) {
-			// TODO: Implement watch mode.
-			throw new Error("not implemented");
-
-		} else {
+		async function reloadTranslationData(this: Project) {
 			try {
 				this.translationData = TranslationData.parse(await readFile(translationDataPath, "utf-8"), translationDataContext);
 			} catch (error) {
@@ -267,30 +260,24 @@ export class Project {
 					throw error;
 				}
 			}
+		}
 
-			const sources = await findFiles(this.config.src, sourcePatterns);
-			for (const filename of sources) {
-				const content = await readFile(filename, "utf-8");
-				if (filename.endsWith(".html")) {
-					this.updateSource(AureliaTemplateFile.parse(filename, content));
-				} else {
-					this.updateSource(JsonResourceFile.parse(filename, content));
-				}
+		async function updateExternalLocale(this: Project, locale: string, filename: string) {
+			const data = JSON.parse(await readFile(filename, "utf-8"));
+			this.addExternalLocale(locale, data);
+		}
+
+		async function updateSource(this: Project, filename: string) {
+			const content = await readFile(filename, "utf-8");
+			if (filename.endsWith(".html")) {
+				this.updateSource(AureliaTemplateFile.parse(filename, content));
+			} else {
+				this.updateSource(JsonResourceFile.parse(filename, content));
 			}
+		}
 
-			for (const locale in this.config.externalLocales) {
-				const patterns = this.config.externalLocales[locale];
-				const files = await findFiles(this.config.context, patterns, true);
-				for (const file of files) {
-					const data = JSON.parse(await readFile(file, "utf-8"));
-					this.addExternalLocale(locale, data);
-				}
-			}
-
-			this.processSources({
-				// TODO: Move to config:
-				enforcePrefix: true,
-			});
+		async function processUpdates(this: Project) {
+			this.processSources();
 
 			await this.handleModified({
 				writeSource: async source => {
@@ -308,6 +295,53 @@ export class Project {
 				await writeFile(filename, JSON.stringify(data));
 			}
 		}
+
+		const watch = options?.watch ?? this.development;
+		if (watch) {
+			const externalLocaleMatchers = new Map(
+				Object
+					.entries(this.config.externalLocales)
+					.map(([locale, patterns]) => [locale, createMatchers(this.config.context, patterns)])
+			);
+			watchFiles(this.config.context, [
+				translationDataPath,
+				...sourcePatterns.map(pattern => joinPattern(this.config.src, pattern)),
+				...Object.values(this.config.externalLocales).flat(),
+			], async updates => {
+				for (const filename of updates.deleted) {
+					this.deleteSource(filename);
+				}
+				files: for (const filename of updates.updated) {
+					if (filename === translationDataPath) {
+						await reloadTranslationData.call(this);
+						continue files;
+					}
+					for (const [locale, test] of externalLocaleMatchers) {
+						if (test(filename)) {
+							await updateExternalLocale.call(this, locale, filename);
+							continue files;
+						}
+					}
+					await updateSource.call(this, filename);
+				}
+				await processUpdates.call(this);
+			});
+			return new Promise(() => {});
+		} else {
+			await reloadTranslationData.call(this);
+			const sources = await findFiles(this.config.src, sourcePatterns);
+			for (const filename of sources) {
+				await updateSource.call(this, filename);
+			}
+			for (const locale in this.config.externalLocales) {
+				const patterns = this.config.externalLocales[locale];
+				const files = await findFiles(this.config.context, patterns, true);
+				for (const filename of files) {
+					await updateExternalLocale.call(this, locale, filename);
+				}
+			}
+			await processUpdates.call(this);
+		}
 	}
 }
 
@@ -318,12 +352,16 @@ export interface ProjectOptions {
 	readonly development?: boolean;
 }
 
-export interface ProjectProcessSourcesOptions {
-	/** If true, keys not starting with the specified prefix are replaced. */
-	readonly enforcePrefix?: boolean;
-}
-
 export interface ProjectHandleModifiedHooks {
 	readonly writeSource?: (source: Source) => void | Promise<void>;
 	readonly writeTranslationData?: (data: TranslationData) => void | Promise<void>;
+}
+
+export interface ProjectRunOptions {
+	/**
+	 * If true, sources, translation data and external locales are watched for changes.
+	 *
+	 * Default is true in development mode and false in production mode.
+	 */
+	watch?: boolean;
 }

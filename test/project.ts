@@ -26,9 +26,7 @@ test("justify sources and update translation data", async t => {
 		</template>
 	`)));
 
-	project.processSources({
-		enforcePrefix: true
-	});
+	project.processSources();
 
 	const { sources, translationData } = await handleModified(project);
 
@@ -67,9 +65,7 @@ test("use fallback for unknown elements", async t => {
 		</template>
 	`)));
 
-	project.processSources({
-		enforcePrefix: true
-	});
+	project.processSources();
 
 	const { sources } = await handleModified(project);
 
@@ -220,9 +216,7 @@ test("use existing translations for reserved keys", async t => {
 		])
 	});
 
-	project.processSources({
-		enforcePrefix: true
-	});
+	project.processSources();
 
 	const { sources, translationData } = await handleModified(project);
 
@@ -276,9 +270,7 @@ test("use existing translations for replaced prefixes", async t => {
 		])
 	});
 
-	project.processSources({
-		enforcePrefix: true
-	});
+	project.processSources();
 
 	const { sources, translationData } = await handleModified(project);
 

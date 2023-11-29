@@ -78,7 +78,7 @@ export class AureliaTemplateFile implements Source {
 		return keys;
 	}
 
-	public justifyKeys(config: Config, { prefix, diagnostics, diagnosticsOnly, isReserved, enforcePrefix }: SourceJustifyKeysOptions): SourceJustifyKeysResult {
+	public justifyKeys(config: Config, { prefix, diagnostics, diagnosticsOnly, isReserved }: SourceJustifyKeysOptions): SourceJustifyKeysResult {
 		const knownKeys = new Set<string>();
 		const candidates: JustificationCandidate[] = [];
 
@@ -144,8 +144,7 @@ export class AureliaTemplateFile implements Source {
 		function getUniqueKey(preferredKey?: string) {
 			let key = preferredKey;
 			function mustBeReplaced(key: string) {
-				return (enforcePrefix && !key.startsWith(prefix))
-					|| (isReserved && isReserved(key));
+				return !key.startsWith(prefix) || (isReserved && isReserved(key));
 			}
 			const replace = preferredKey && mustBeReplaced(preferredKey);
 			if (!key || generatedKeys.has(key) || replace) {

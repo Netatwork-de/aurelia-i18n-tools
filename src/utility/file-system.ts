@@ -3,7 +3,7 @@ import { readdir } from "node:fs/promises";
 
 import { watch } from "chokidar";
 import createMatcher, { Matcher, scan } from "picomatch";
-import { normalize } from "node:path";
+import { join, normalize } from "node:path";
 
 export interface WatchFileUpdates {
 	initial: boolean;
@@ -12,15 +12,50 @@ export interface WatchFileUpdates {
 }
 
 /**
+ * Join a base path with a pattern.
+ */
+export function joinPattern(base: string, pattern: string) {
+	return base.endsWith("/")
+		? (pattern.endsWith("/") ? base + pattern.slice(1) : base + pattern)
+		: pattern.endsWith("/") ? base + pattern : base + "/" + pattern;
+}
+
+function asPosixPath(path: string) {
+	return path.replace(/\\/g, "/");
+}
+
+/**
+ * Create a function that tests if a path matches any of the given patterns.
+ */
+export function createMatchers(cwd: string, patterns: string[]): (path: string) => boolean {
+	cwd = asPosixPath(cwd);
+	const matchers = patterns.map(pattern => createMatcher(pattern));
+	return path => {
+		const rel = posixPath.relative(cwd, asPosixPath(path));
+		return matchers.some(matcher => matcher(rel));
+	};
+}
+
+/**
  * Watch for file system changes.
  *
  * This uses chokidar underneath.
  */
-export function watchFiles(cwd: string, patterns: string[], fn: (updates: WatchFileUpdates) => void): void {
+export function watchFiles(cwd: string, patterns: string[], fn: (updates: WatchFileUpdates) => Promise<void>): void {
 	const watcher = watch(patterns, {
 		awaitWriteFinish: true,
 		cwd,
 	});
+
+	let current = Promise.resolve();
+	function queue(fn: () => Promise<void>) {
+		current = current
+			.then(fn)
+			.catch(error => {
+				console.error(error);
+				process.exitCode = 1;
+			});
+	}
 
 	let ready = false;
 	const initial: string[] = [];
@@ -28,23 +63,24 @@ export function watchFiles(cwd: string, patterns: string[], fn: (updates: WatchF
 	watcher.on("error", console.error);
 	watcher.on("ready", () => {
 		ready = true;
-		fn({ initial: true, updated: initial, deleted: [] });
+		queue(() => fn({ initial: true, updated: initial, deleted: [] }));
 	});
 
 	watcher.on("add", filename => {
+		filename = join(cwd, filename);
 		if (ready) {
-			fn({ initial: false, updated: [filename], deleted: [] })
+			queue(() => fn({ initial: false, updated: [filename], deleted: [] }));
 		} else {
 			initial.push(filename);
 		}
 	});
 
 	watcher.on("change", filename => {
-		fn({ initial: false, updated: [filename], deleted: [] });
+		queue(() => fn({ initial: false, updated: [join(cwd, filename)], deleted: [] }));
 	});
 
 	watcher.on("unlink", filename => {
-		fn({ initial: false, updated: [], deleted: [filename] });
+		queue(() => fn({ initial: false, updated: [], deleted: [join(cwd, filename)] }));
 	});
 }
 
@@ -56,8 +92,7 @@ export function watchFiles(cwd: string, patterns: string[], fn: (updates: WatchF
  * @returns An array with absolute filenames.
  */
 export async function findFiles(cwd: string, patterns: string[], debug = false): Promise<string[]> {
-	// Picomatch only supports posix paths:
-	cwd = cwd.replace(/\\/g, "/");
+	cwd = asPosixPath(cwd);
 
 	const matchers: Matcher[] = [];
 	let bases: string[] = [];

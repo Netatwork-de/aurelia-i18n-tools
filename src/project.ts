@@ -25,8 +25,8 @@ export class Project {
 	private readonly _unprocessedSources = new Set<string>();
 	/** A set of filenames of sources that have been modified in memory. */
 	private readonly _modifiedSources = new Set<string>();
-	/** An array of external locales. */
-	private readonly _externalLocales: { localeId: string, data: LocaleData }[] = [];
+	/** Map from locales to filenames to external locale data. */
+	private readonly _externalLocales = new Map<string, Map<string, LocaleData>>();
 
 	private _translationData = new TranslationData();
 	private _translationDataModified = false;
@@ -203,8 +203,13 @@ export class Project {
 	/**
 	 * Add external locale data.
 	 */
-	public addExternalLocale(localeId: string, data: LocaleData) {
-		this._externalLocales.push({ localeId, data });
+	public addExternalLocale(localeId: string, filename: string, data: LocaleData) {
+		const entries = this._externalLocales.get(localeId);
+		if (entries) {
+			entries.set(filename, data);
+		} else {
+			this._externalLocales.set(localeId, new Map([[filename, data]]));
+		}
 	}
 
 	/**
@@ -213,12 +218,14 @@ export class Project {
 	 */
 	public compileLocales() {
 		const locales = this._translationData.compile(this.config, this.diagnostics);
-		for (const { localeId, data } of this._externalLocales) {
-			const target = locales.get(localeId);
-			if (target) {
-				LocaleData.merge(target, data, this.diagnostics);
-			} else {
-				locales.set(localeId, LocaleData.clone(data));
+		for (const [localeId, files] of this._externalLocales) {
+			for (const data of files.values()) {
+				const target = locales.get(localeId);
+				if (target) {
+					LocaleData.merge(target, data, this.diagnostics);
+				} else {
+					locales.set(localeId, LocaleData.clone(data));
+				}
 			}
 		}
 		return locales;
@@ -264,7 +271,7 @@ export class Project {
 
 		async function updateExternalLocale(this: Project, locale: string, filename: string) {
 			const data = JSON.parse(await readFile(filename, "utf-8"));
-			this.addExternalLocale(locale, data);
+			this.addExternalLocale(locale, filename, data);
 		}
 
 		async function updateSource(this: Project, filename: string) {
@@ -292,7 +299,7 @@ export class Project {
 			for (const [locale, data] of locales) {
 				const filename = this.config.getOutputFilename(locale);
 				await mkdir(dirname(filename), { recursive: true });
-				await writeFile(filename, JSON.stringify(data));
+				await writeFile(filename, JSON.stringify(data), "utf-8");
 			}
 		}
 
@@ -303,28 +310,33 @@ export class Project {
 					.entries(this.config.externalLocales)
 					.map(([locale, patterns]) => [locale, createMatchers(this.config.context, patterns)])
 			);
-			watchFiles(this.config.context, [
-				translationDataPath,
-				...sourcePatterns.map(pattern => joinPattern(this.config.src, pattern)),
-				...Object.values(this.config.externalLocales).flat(),
-			], async updates => {
-				for (const filename of updates.deleted) {
-					this.deleteSource(filename);
-				}
-				files: for (const filename of updates.updated) {
-					if (filename === translationDataPath) {
-						await reloadTranslationData.call(this);
-						continue files;
+
+			watchFiles({
+				cwd: this.config.context,
+				patterns: [
+					translationDataPath,
+					...sourcePatterns.map(pattern => joinPattern(this.config.src, pattern)),
+					...Object.values(this.config.externalLocales).flat(),
+				],
+				handleUpdates: async updates => {
+					for (const filename of updates.deleted) {
+						this.deleteSource(filename);
 					}
-					for (const [locale, test] of externalLocaleMatchers) {
-						if (test(filename)) {
-							await updateExternalLocale.call(this, locale, filename);
+					files: for (const filename of updates.updated) {
+						if (filename === translationDataPath) {
+							await reloadTranslationData.call(this);
 							continue files;
 						}
+						for (const [locale, test] of externalLocaleMatchers) {
+							if (test(filename)) {
+								await updateExternalLocale.call(this, locale, filename);
+								continue files;
+							}
+						}
+						await updateSource.call(this, filename);
 					}
-					await updateSource.call(this, filename);
-				}
-				await processUpdates.call(this);
+					await processUpdates.call(this);
+				},
 			});
 			return new Promise(() => {});
 		} else {

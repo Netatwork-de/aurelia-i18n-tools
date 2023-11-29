@@ -36,21 +36,32 @@ export function createMatchers(cwd: string, patterns: string[]): (path: string) 
 	};
 }
 
+export interface WatchFileOptions {
+	cwd: string;
+	patterns: string[];
+	handleUpdates: (updates: WatchFileUpdates) => Promise<void>;
+	delay?: number;
+}
+
 /**
  * Watch for file system changes.
  *
  * This uses chokidar underneath.
  */
-export function watchFiles(cwd: string, patterns: string[], fn: (updates: WatchFileUpdates) => Promise<void>): void {
-	const watcher = watch(patterns, {
-		awaitWriteFinish: true,
-		cwd,
+export function watchFiles(options: WatchFileOptions): void {
+	const stabilityThreshold = options.delay ?? 100;
+	const watcher = watch(options.patterns, {
+		awaitWriteFinish: {
+			pollInterval: stabilityThreshold	/ 2,
+			stabilityThreshold,
+		},
+		cwd: options.cwd,
 	});
 
 	let current = Promise.resolve();
-	function queue(fn: () => Promise<void>) {
+	function queue(updates: WatchFileUpdates) {
 		current = current
-			.then(fn)
+			.then(() => options.handleUpdates(updates))
 			.catch(error => {
 				console.error(error);
 				process.exitCode = 1;
@@ -63,24 +74,24 @@ export function watchFiles(cwd: string, patterns: string[], fn: (updates: WatchF
 	watcher.on("error", console.error);
 	watcher.on("ready", () => {
 		ready = true;
-		queue(() => fn({ initial: true, updated: initial, deleted: [] }));
+		queue({ initial: true, updated: initial, deleted: [] });
 	});
 
 	watcher.on("add", filename => {
-		filename = join(cwd, filename);
+		filename = join(options.cwd, filename);
 		if (ready) {
-			queue(() => fn({ initial: false, updated: [filename], deleted: [] }));
+			queue({ initial: false, updated: [filename], deleted: [] });
 		} else {
 			initial.push(filename);
 		}
 	});
 
 	watcher.on("change", filename => {
-		queue(() => fn({ initial: false, updated: [join(cwd, filename)], deleted: [] }));
+		queue({ initial: false, updated: [join(options.cwd, filename)], deleted: [] });
 	});
 
 	watcher.on("unlink", filename => {
-		queue(() => fn({ initial: false, updated: [], deleted: [join(cwd, filename)] }));
+		queue({ initial: false, updated: [], deleted: [join(options.cwd, filename)] });
 	});
 }
 

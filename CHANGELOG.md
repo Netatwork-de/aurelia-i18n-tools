@@ -1,5 +1,7 @@
 
 # 4.0
++ Add command line interface.
++ Add standard workflows to project API.
 + **Breaking Change**: Drop gulp support.
 + **Breaking Change**: Drop support for nodejs 15 or lower.
 

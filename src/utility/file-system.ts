@@ -102,7 +102,7 @@ export function watchFiles(options: WatchFileOptions): void {
  *
  * @returns An array with absolute filenames.
  */
-export async function findFiles(cwd: string, patterns: string[], debug = false): Promise<string[]> {
+export async function findFiles(cwd: string, patterns: string[]): Promise<string[]> {
 	cwd = asPosixPath(cwd);
 
 	const matchers: Matcher[] = [];
@@ -128,6 +128,9 @@ export async function findFiles(cwd: string, patterns: string[], debug = false):
 					await walk(posixPath.join(path, name));
 				}
 			}, error => {
+				if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+					return;
+				}
 				if ((error as NodeJS.ErrnoException).code !== "ENOTDIR") {
 					throw error;
 				}

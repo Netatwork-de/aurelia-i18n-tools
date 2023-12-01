@@ -347,7 +347,7 @@ export class Project {
 			}
 			for (const locale in this.config.externalLocales) {
 				const patterns = this.config.externalLocales[locale];
-				const files = await findFiles(this.config.context, patterns, true);
+				const files = await findFiles(this.config.context, patterns);
 				for (const filename of files) {
 					await updateExternalLocale.call(this, locale, filename);
 				}

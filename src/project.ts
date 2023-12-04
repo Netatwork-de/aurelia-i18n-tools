@@ -6,7 +6,7 @@ import { Diagnostics, Diagnostic, DiagnosticFormatter } from "./diagnostics.js";
 import { PairSet } from "./utility/pair-set.js";
 import { TranslationData } from "./translation-data.js";
 import { LocaleData } from "./locale-data.js";
-import { createMatchers, findFiles, joinPattern, watchFiles } from "./utility/file-system.js";
+import { deduplicateModuleFilenames, findFiles, joinPattern, watchFiles } from "./utility/file-system.js";
 import { AureliaTemplateFile } from "./aurelia-template-file.js";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { JsonResourceFile } from "./json-resource-file.js";
@@ -305,18 +305,20 @@ export class Project {
 
 		const watch = options?.watch ?? this.development;
 		if (watch) {
-			const externalLocaleMatchers = new Map(
-				Object
-					.entries(this.config.externalLocales)
-					.map(([locale, patterns]) => [locale, createMatchers(this.config.context, patterns)])
-			);
-
+			const externalLocaleFiles = new Map<string, string>();
+			for (const locale in this.config.externalLocales) {
+				const patterns = this.config.externalLocales[locale];
+				const filenames = deduplicateModuleFilenames(await findFiles(this.config.context, patterns));
+				for (const filename of filenames) {
+					externalLocaleFiles.set(filename, locale);
+				}
+			}
 			watchFiles({
 				cwd: this.config.context,
 				patterns: [
 					translationDataPath,
+					...externalLocaleFiles.keys(),
 					...sourcePatterns.map(pattern => joinPattern(this.config.src, pattern)),
-					...Object.values(this.config.externalLocales).flat(),
 				],
 				handleUpdates: async updates => {
 					for (const filename of updates.deleted) {
@@ -327,11 +329,10 @@ export class Project {
 							await reloadTranslationData.call(this);
 							continue files;
 						}
-						for (const [locale, test] of externalLocaleMatchers) {
-							if (test(filename)) {
-								await updateExternalLocale.call(this, locale, filename);
-								continue files;
-							}
+						const locale = externalLocaleFiles.get(filename);
+						if (locale !== undefined) {
+							await updateExternalLocale.call(this, locale, filename);
+							continue files;
 						}
 						await updateSource.call(this, filename);
 					}
@@ -347,8 +348,8 @@ export class Project {
 			}
 			for (const locale in this.config.externalLocales) {
 				const patterns = this.config.externalLocales[locale];
-				const files = await findFiles(this.config.context, patterns, true);
-				for (const filename of files) {
+				const filenames = deduplicateModuleFilenames(await findFiles(this.config.context, patterns));
+				for (const filename of filenames) {
 					await updateExternalLocale.call(this, locale, filename);
 				}
 			}

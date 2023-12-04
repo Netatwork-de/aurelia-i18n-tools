@@ -1,6 +1,6 @@
 {
 	"name": "@netatwork/aurelia-i18n-tools",
-	"version": "4.0.1",
+	"version": "4.0.2",
 	"description": "A toolchain to help with localization in aurelia projects.",
 	"type": "module",
 	"main": "./dist/index.js",
@@ -20,7 +20,6 @@
 		"decamelize": "^5.0.0",
 		"parse5": "^7.1.2",
 		"picomatch": "^3.0.1",
-		"remove": "^0.1.5",
 		"yargs-parser": "^21.1.1"
 	},
 	"devDependencies": {

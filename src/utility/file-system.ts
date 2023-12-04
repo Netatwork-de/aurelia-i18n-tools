@@ -24,18 +24,6 @@ function asPosixPath(path: string) {
 	return path.replace(/\\/g, "/");
 }
 
-/**
- * Create a function that tests if a path matches any of the given patterns.
- */
-export function createMatchers(cwd: string, patterns: string[]): (path: string) => boolean {
-	cwd = asPosixPath(cwd);
-	const matchers = patterns.map(pattern => createMatcher(pattern));
-	return path => {
-		const rel = posixPath.relative(cwd, asPosixPath(path));
-		return matchers.some(matcher => matcher(rel));
-	};
-}
-
 export interface WatchFileOptions {
 	cwd: string;
 	patterns: string[];
@@ -142,4 +130,25 @@ export async function findFiles(cwd: string, patterns: string[]): Promise<string
 		})(base);
 	}
 	return filenames;
+}
+
+/**
+ * Deduplicate files that exist in multiple "node_modules" directories.
+ */
+export function deduplicateModuleFilenames(filenames: string[]): string[] {
+	const result: string[] = [];
+	const moduleFilenames = new Map<string, string>();
+	for (const filename of filenames) {
+		const match = /node_modules[\\\/](.*)$/.exec(filename);
+		if (match) {
+			const current = moduleFilenames.get(match[1]);
+			if (!current || current.length < filename.length) {
+				moduleFilenames.set(match[1], filename);
+			}
+		} else {
+			result.push(filename);
+		}
+	}
+	result.push(...moduleFilenames.values());
+	return result;
 }

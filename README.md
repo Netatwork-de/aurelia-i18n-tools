@@ -31,8 +31,10 @@ export default defineConfig({
   // Default is an empty string.
   prefix: "example.",
 
-  // The locale used in source files.
-  sourceLocale: "en",
+  // An array of locales.
+  // The first one is the locale used in source files.
+  // Default is `[en]`
+  locales: ["en", "de"],
 
   // An array of rules to control what is not localized:
   // By default, nothing is ignored.

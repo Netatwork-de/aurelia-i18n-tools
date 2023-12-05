@@ -31,10 +31,10 @@ export interface ConfigOptions {
 	prefix?: string;
 
 	/**
-	 * An id for the locale that is used in source files.
-	 * @default "en"
+	 * An array of locales. The first one is the locale used in source files.
+	 * @default ["en"]
 	 */
-	sourceLocale?: string;
+	locales?: string[];
 
 	/**
 	 * A list of ignore rules.
@@ -116,8 +116,8 @@ export interface Config {
 	readonly getOutputFilename: (locale: string) => string;
 	/** A common prefix used for all keys */
 	readonly prefix: string;
-	/** An id for the locale that is used in source files. */
-	readonly sourceLocaleId: string;
+	/** An array of locales. The first one is the locale used in source files. */
+	readonly locales: string[];
 	/** A function that is called to check if an element and it's sub tree should be ignored. */
 	ignoreElement: (tagName: string) => boolean;
 	/** A function that is called to check text content should be ignored. */
@@ -321,8 +321,10 @@ export function createConfig(context: string, options: ConfigOptions = {}): Conf
 	if (options.prefix !== undefined && typeof options.prefix !== "string") {
 		throw new TypeError(`prefix must be a string.`);
 	}
-	if (options.sourceLocale !== undefined && typeof options.sourceLocale !== "string") {
-		throw new TypeError(`sourceLocale must be a string.`);
+
+	const locales = options.locales ?? ["en"];
+	if (!Array.isArray(locales) || !locales.every(l => typeof l === "string") || locales.length === 0) {
+		throw new TypeError(`locales must be an array of at least one string.`);
 	}
 
 	const diagnosticHandlingFallback = options.diagnostics?.all || Config.DiagnosticHandling.Warning;
@@ -351,7 +353,7 @@ export function createConfig(context: string, options: ConfigOptions = {}): Conf
 		getOutputFilename: locale => resolve(context, (options.output ?? "./dist/[locale]/translation.json").replace(/\[locale\]/g, locale)),
 		externalLocales: options.externalLocales ?? {},
 		prefix: options.prefix || "",
-		sourceLocaleId: options.sourceLocale || "en",
+		locales,
 		ignoreElement: createIgnoreFunction(ignoreElements),
 		ignoreTextContent: createIgnoreFunction(ignoreTextContent),
 		ignoreAttributeValue: createIgnoreFunction(ignoreAttributeValue),

@@ -71,16 +71,20 @@ export class TranslationData {
 	 * @returns A map of locale ids to compiled locale data.
 	 */
 	public compile(config: Config, diagnostics: Diagnostics) {
-		const locales = new Map<string, LocaleData>();
+		const locales = new Map<string, LocaleData>(config.locales.map(locale => {
+			return [locale, LocaleData.createNew()];
+		}));
 		for (const [filename, file] of this.files) {
 			for (const [key, translationSet] of file.content) {
 				function setKey(localeId: string, content: string) {
-					let locale = locales.get(localeId);
+					const locale = locales.get(localeId);
 					if (!locale) {
-						locale = LocaleData.createNew();
-						locales.set(localeId, locale);
-					}
-					if (!LocaleData.set(locale, key, content)) {
+						diagnostics.report({
+							type: Diagnostic.Type.UnknownLocale,
+							details: { key, localeId },
+							filename,
+						});
+					} else if (!LocaleData.set(locales.get(localeId)!, key, content)) {
 						diagnostics.report({
 							type: Diagnostic.Type.DuplicateKey,
 							details: { key },
@@ -88,7 +92,7 @@ export class TranslationData {
 						});
 					}
 				}
-				setKey(config.sourceLocaleId, translationSet.source.content);
+				setKey(config.locales[0], translationSet.source.content);
 				for (const [localeId, translation] of translationSet.translations) {
 					if (translation.lastModified >= translationSet.source.lastModified) {
 						setKey(localeId, translation.content);
@@ -102,12 +106,10 @@ export class TranslationData {
 				}
 			}
 		}
-		const additionalLocales = new Set(locales.keys());
-		additionalLocales.delete(config.sourceLocaleId);
 		for (const [filename, file] of this.files) {
 			for (const [key, translationSet] of file.content) {
-				for (const localeId of additionalLocales) {
-					if (!translationSet.translations.has(localeId)) {
+				for (const localeId of config.locales) {
+					if (localeId !== config.locales[0] && !translationSet.translations.has(localeId)) {
 						diagnostics.report({
 							type: Diagnostic.Type.MissingTranslation,
 							details: { key, localeId },

@@ -27,7 +27,8 @@ export namespace Diagnostic {
 		OutdatedTranslation = "outdated-translation",
 		MissingTranslation = "missing-translation",
 		ModifiedSource = "modified-source",
-		ModifiedTranslation = "modified-translation"
+		ModifiedTranslation = "modified-translation",
+		UnknownLocale = "unknown-locale",
 	}
 
 	export type Details<T extends Type> = {
@@ -46,6 +47,7 @@ export namespace Diagnostic {
 		[Type.MissingTranslation]: { key: string, localeId: string };
 		[Type.ModifiedSource]: {};
 		[Type.ModifiedTranslation]: {};
+		[Type.UnknownLocale]: { key: string, localeId: string };
 	}[T];
 
 	export const TYPES = new Set<Type>([
@@ -63,7 +65,8 @@ export namespace Diagnostic {
 		Type.OutdatedTranslation,
 		Type.MissingTranslation,
 		Type.ModifiedSource,
-		Type.ModifiedTranslation
+		Type.ModifiedTranslation,
+		Type.UnknownLocale,
 	]);
 }
 
@@ -127,7 +130,8 @@ export class DiagnosticFormatter {
 		[Diagnostic.Type.OutdatedTranslation]: d => `Translation of ${this.formatName(d.key)} for locale ${this.formatName(d.localeId)} is outdated.`,
 		[Diagnostic.Type.MissingTranslation]: d => `Translation of ${this.formatName(d.key)} for locale ${this.formatName(d.localeId)} is missing.`,
 		[Diagnostic.Type.ModifiedSource]: d => `Changes to the source should have been committed.`,
-		[Diagnostic.Type.ModifiedTranslation]: d => `Changes to translation data should have been committed.`
+		[Diagnostic.Type.ModifiedTranslation]: d => `Changes to translation data should have been committed.`,
+		[Diagnostic.Type.UnknownLocale]: d => `Key ${this.formatName(d.key)} has translations for ${this.formatName(d.localeId)}, but this locale is not configured.`,
 	};
 
 	public format<T extends Diagnostic.Type>(diagnostic: Diagnostic<T>) {

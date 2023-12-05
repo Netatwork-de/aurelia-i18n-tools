@@ -240,6 +240,7 @@ export class Project {
 		this.diagnostics.on("report", diagnostic => {
 			const handling = this.config.getDiagnosticHandling(diagnostic.type);
 			if (handling === Config.DiagnosticHandling.Error) {
+				console.log(this.diagnosticFormatter.format(diagnostic));
 				process.exitCode = 1;
 			} else if (handling !== Config.DiagnosticHandling.Ignore) {
 				console.log(this.diagnosticFormatter.format(diagnostic));

@@ -1,6 +1,6 @@
 {
 	"name": "@netatwork/aurelia-i18n-tools",
-	"version": "4.0.2",
+	"version": "4.0.3",
 	"description": "A toolchain to help with localization in aurelia projects.",
 	"type": "module",
 	"main": "./dist/index.js",

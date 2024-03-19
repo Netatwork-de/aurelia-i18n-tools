@@ -1,7 +1,11 @@
 {
 	"name": "@netatwork/aurelia-i18n-tools",
-	"version": "4.1.0",
+	"version": "4.1.1",
 	"description": "A toolchain to help with localization in aurelia projects.",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/Netatwork-de/aurelia-i18n-tools"
+	},
 	"type": "module",
 	"main": "./dist/index.js",
 	"bin": {
@@ -31,7 +35,6 @@
 		"concurrently": "^8.2.2",
 		"typescript": "^5.4.2"
 	},
-	"repository": "github:Netatwork-de/aurelia-i18n-tools",
 	"author": "Net at Work GmbH",
 	"license": "Apache-2.0"
 }

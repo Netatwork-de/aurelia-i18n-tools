@@ -1,5 +1,7 @@
 import { defaultTreeAdapter as adapter } from "parse5";
-import { Element, Node, ParentNode, Template } from "parse5/dist/tree-adapters/default";
+import type { DocumentFragment, Element, Node, ParentNode, Template } from "../../node_modules/parse5/dist/tree-adapters/default.js";
+
+export type { DocumentFragment, Element };
 
 import { DiagnosticLocationPair } from "../diagnostics.js";
 

@@ -1,7 +1,5 @@
 import { parseFragment } from "parse5";
-import { DocumentFragment, Element } from "parse5/dist/tree-adapters/default";
-
-import { traverseElements, getAttributeValue, analyzeElementContent, treeDiagnostics } from "./utility/parse5-tree.js";
+import { traverseElements, getAttributeValue, analyzeElementContent, treeDiagnostics, DocumentFragment, Element } from "./utility/parse5-tree.js";
 import { Config, ElementContentLocalizationType } from "./config.js";
 import { AureliaI18nAttribute } from "./aurelia-i18n-attribute.js";
 import { Source, SourceJustifyKeysOptions, SourceJustifyKeysResult } from "./source.js";

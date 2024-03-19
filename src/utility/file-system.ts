@@ -2,7 +2,7 @@ import * as posixPath from "node:path/posix";
 import { readdir } from "node:fs/promises";
 
 import { watch } from "chokidar";
-import createMatcher, { Matcher, scan } from "picomatch";
+import picomatch from "picomatch";
 import { join, normalize } from "node:path";
 
 export interface WatchFileUpdates {
@@ -93,11 +93,11 @@ export function watchFiles(options: WatchFileOptions): void {
 export async function findFiles(cwd: string, patterns: string[]): Promise<string[]> {
 	cwd = asPosixPath(cwd);
 
-	const matchers: Matcher[] = [];
+	const matchers: picomatch.Matcher[] = [];
 	let bases: string[] = [];
 	for (const pattern of patterns) {
-		matchers.push(createMatcher(pattern));
-		const base = posixPath.join(cwd, scan(pattern).base);
+		matchers.push(picomatch(pattern));
+		const base = posixPath.join(cwd, picomatch.scan(pattern).base);
 		if (!bases.some(path => isOrContains(path, base))) {
 			bases = bases.filter(path => !isOrContains(base, path));
 			bases.push(base);

@@ -1,4 +1,7 @@
 
+# 4.1
++ Add `--no-externals` command line option.
+
 # 4.0
 + Add command line interface.
 + Add standard workflows to project API.

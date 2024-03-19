@@ -305,6 +305,7 @@ export class Project {
 		}
 
 		const watch = options?.watch ?? this.development;
+		const externals = options?.externals ?? true;
 		if (watch) {
 			const externalLocaleFiles = new Map<string, string>();
 			for (const locale in this.config.externalLocales) {
@@ -332,7 +333,9 @@ export class Project {
 						}
 						const locale = externalLocaleFiles.get(filename);
 						if (locale !== undefined) {
-							await updateExternalLocale.call(this, locale, filename);
+							if (externals) {
+								await updateExternalLocale.call(this, locale, filename);
+							}
 							continue files;
 						}
 						await updateSource.call(this, filename);
@@ -347,11 +350,13 @@ export class Project {
 			for (const filename of sources) {
 				await updateSource.call(this, filename);
 			}
-			for (const locale in this.config.externalLocales) {
-				const patterns = this.config.externalLocales[locale];
-				const filenames = deduplicateModuleFilenames(await findFiles(this.config.context, patterns));
-				for (const filename of filenames) {
-					await updateExternalLocale.call(this, locale, filename);
+			if (externals) {
+				for (const locale in this.config.externalLocales) {
+					const patterns = this.config.externalLocales[locale];
+					const filenames = deduplicateModuleFilenames(await findFiles(this.config.context, patterns));
+					for (const filename of filenames) {
+						await updateExternalLocale.call(this, locale, filename);
+					}
 				}
 			}
 			await processUpdates.call(this);
@@ -378,4 +383,11 @@ export interface ProjectRunOptions {
 	 * Default is true in development mode and false in production mode.
 	 */
 	watch?: boolean;
+
+	/**
+	 * If false, external locales are not included in the output.
+	 *
+	 * @default true
+	 */
+	externals?: boolean;
 }

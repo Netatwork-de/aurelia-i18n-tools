@@ -159,3 +159,6 @@ Enable or disable watching for changes.
 
 ### `--verbose, -v`
 Show verbose information like the effective configuration options.
+
+### `--no-externals`
+If specified, external locales are not included in the output.

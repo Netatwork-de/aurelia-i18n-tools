@@ -13,6 +13,7 @@ import { Project } from "./project.js";
 			"watch",
 			"verbose",
 			"externals",
+			"color",
 		],
 		string: ["config"],
 		alias: {
@@ -27,6 +28,7 @@ import { Project } from "./project.js";
 	const watch = Boolean(args.watch ?? development);
 	const verbose = Boolean(args.verbose ?? false);
 	const externals = Boolean(args.externals ?? true);
+	const color = Boolean(args.color ?? true);
 
 	const configFilename = resolve(args.config ?? "i18n-config.mjs");
 	if (verbose) {
@@ -54,6 +56,7 @@ import { Project } from "./project.js";
 
 	const config = createConfig(dirname(configFilename), options);
 	const project = new Project({ config, development });
+	project.diagnosticFormatter.color = color;
 	project.reportDiagnosticsToConsole();
 	await project.run({ watch, externals });
 })().catch(error => {

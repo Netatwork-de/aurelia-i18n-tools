@@ -93,11 +93,18 @@ export class Diagnostics extends EventEmitter {
 
 export class DiagnosticFormatter {
 	constructor(options: DiagnosticFormatterOptions = {}) {
-		this.color = options.color === undefined ? true : options.color;
+		this.color = options.color ?? true;
 		this.context = options.context;
 	}
 
+	/**
+	 * See {@link DiagnosticFormatterOptions.color}
+	 */
 	color: boolean;
+
+	/**
+	 * See {@link DiagnosticFormatterOptions.context}
+	 */
 	context?: string;
 
 	#formatPropertyPath(path: string[]) {
@@ -143,12 +150,22 @@ export class DiagnosticFormatter {
 			}
 		}
 		const message = this.#messages[diagnostic.type](<Diagnostic.Details<any>> diagnostic.details);
-		return `[${colors.red("aurelia-i18n")}]${fileInfo} ${message}`;
+		let raw = `[${colors.red("aurelia-i18n")}]${fileInfo} ${message}`;
+		if (!this.color) {
+			raw = colors.strip(raw);
+		}
+		return raw;
 	}
 }
 
 export interface DiagnosticFormatterOptions {
-	prefix?: string;
+	/**
+	 * If true (default), formatted output is colored.
+	 */
 	color?: boolean;
+
+	/**
+	 * Optional absolute path to omit from formatted file paths.
+	 */
 	context?: string;
 }

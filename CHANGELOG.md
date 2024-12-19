@@ -1,4 +1,7 @@
 
+# 5.0
++ **Breaking Change**: Drop support for nodejs 19 or lower.
+
 # 4.1
 + Add `--no-externals` command line option.
 

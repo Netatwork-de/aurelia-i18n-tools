@@ -1,5 +1,4 @@
 import { resolve } from "node:path";
-
 import { Diagnostic } from "./diagnostics.js";
 
 export interface ConfigOptions {
@@ -81,7 +80,7 @@ export interface ConfigOptions {
 		 */
 		attributes?: Record<string, Config.WhitespaceHandling>;
 		/**
-		 *
+		 * Whitespace handling for node text content.
 		 */
 		content?: Config.WhitespaceHandling;
 	} | Config.WhitespaceHandling>;

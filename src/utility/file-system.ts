@@ -1,9 +1,8 @@
-import * as posixPath from "node:path/posix";
-import { readdir } from "node:fs/promises";
-
 import { watch } from "chokidar";
-import picomatch from "picomatch";
+import { readdir } from "node:fs/promises";
 import { join, normalize } from "node:path";
+import * as posixPath from "node:path/posix";
+import picomatch from "picomatch";
 
 export interface WatchFileUpdates {
 	initial: boolean;

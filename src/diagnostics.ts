@@ -1,8 +1,7 @@
-import { EventEmitter } from "node:events";
-import { inspect } from "node:util";
-
 import colors from "ansi-colors";
+import { EventEmitter } from "node:events";
 import { relative } from "node:path";
+import { inspect } from "node:util";
 
 export interface Diagnostic<T extends Diagnostic.Type> extends DiagnosticLocationPair {
 	readonly type: T;
@@ -87,54 +86,61 @@ export declare interface Diagnostics {
 }
 
 export class Diagnostics extends EventEmitter {
-	public report<T extends Diagnostic.Type>(diagnostic: Diagnostic<T>) {
+	report<T extends Diagnostic.Type>(diagnostic: Diagnostic<T>) {
 		this.emit("report", diagnostic);
 	}
 }
 
 export class DiagnosticFormatter {
-	public constructor(options: DiagnosticFormatterOptions = {}) {
-		this.color = options.color === undefined ? true : options.color;
+	constructor(options: DiagnosticFormatterOptions = {}) {
+		this.color = options.color ?? true;
 		this.context = options.context;
 	}
 
-	public color: boolean;
-	public context?: string;
+	/**
+	 * See {@link DiagnosticFormatterOptions.color}
+	 */
+	color: boolean;
 
-	private formatPropertyPath(path: string[]) {
+	/**
+	 * See {@link DiagnosticFormatterOptions.context}
+	 */
+	context?: string;
+
+	#formatPropertyPath(path: string[]) {
 		return colors.green(path.join("/"));
 	}
 
-	private formatError(error: any) {
+	#formatError(error: any) {
 		return inspect(error, false, undefined, this.color);
 	}
 
-	private formatName(name: string) {
+	#formatName(name: string) {
 		return `"${colors.green(name)}"`;
 	}
 
-	private readonly messages: {
+	#messages: {
 		[T in Diagnostic.Type]: (details: Diagnostic.Details<T>) => string
 	} = {
-		[Diagnostic.Type.InvalidJsonData]: d => `Invalid json data at ${this.formatPropertyPath(d.path)}. Only objects and strings are allowed.`,
-		[Diagnostic.Type.InvalidJsonPartName]: d => `Invalid json property name at ${this.formatPropertyPath(d.path)}. Property names should not contain dots.`,
+		[Diagnostic.Type.InvalidJsonData]: d => `Invalid json data at ${this.#formatPropertyPath(d.path)}. Only objects and strings are allowed.`,
+		[Diagnostic.Type.InvalidJsonPartName]: d => `Invalid json property name at ${this.#formatPropertyPath(d.path)}. Property names should not contain dots.`,
 		[Diagnostic.Type.MixedContent]: d => `Element contains both text content and elements.`,
-		[Diagnostic.Type.InvalidTAttribute]: d => `Malformed t-attribute value: ${this.formatError(d.error)}`,
+		[Diagnostic.Type.InvalidTAttribute]: d => `Malformed t-attribute value: ${this.#formatError(d.error)}`,
 		[Diagnostic.Type.UnlocalizedText]: d => `Element contains unlocalized text content.`,
 		[Diagnostic.Type.DisallowedTAttribute]: d => `Unconfigured element has a t-attribute.`,
 		[Diagnostic.Type.DisallowedContent]: d => `Unconfigured element contains text or html content.`,
-		[Diagnostic.Type.DisallowedLocalizedAttribute]: d => `Unconfigured attribute ${this.formatName(d.name)} is localized with key ${this.formatName(d.key)}.`,
-		[Diagnostic.Type.WrongPrefix]: d => `Key ${this.formatName(d.key)} is expected to start with the prefix ${this.formatName(d.expectedPrefix)}.`,
-		[Diagnostic.Type.DuplicateKeyOrPath]: d => `Duplicate localization key or path: ${this.formatPropertyPath(d.path)}`,
-		[Diagnostic.Type.DuplicateKey]: d => `Duplicate localization key: ${this.formatName(d.key)}`,
-		[Diagnostic.Type.OutdatedTranslation]: d => `Translation of ${this.formatName(d.key)} for locale ${this.formatName(d.localeId)} is outdated.`,
-		[Diagnostic.Type.MissingTranslation]: d => `Translation of ${this.formatName(d.key)} for locale ${this.formatName(d.localeId)} is missing.`,
-		[Diagnostic.Type.ModifiedSource]: d => `Changes to the source should have been committed.`,
-		[Diagnostic.Type.ModifiedTranslation]: d => `Changes to translation data should have been committed.`,
-		[Diagnostic.Type.UnknownLocale]: d => `Key ${this.formatName(d.key)} has translations for ${this.formatName(d.localeId)}, but this locale is not configured.`,
+		[Diagnostic.Type.DisallowedLocalizedAttribute]: d => `Unconfigured attribute ${this.#formatName(d.name)} is localized with key ${this.#formatName(d.key)}.`,
+		[Diagnostic.Type.WrongPrefix]: d => `Key ${this.#formatName(d.key)} is expected to start with the prefix ${this.#formatName(d.expectedPrefix)}.`,
+		[Diagnostic.Type.DuplicateKeyOrPath]: d => `Duplicate localization key or path: ${this.#formatPropertyPath(d.path)}`,
+		[Diagnostic.Type.DuplicateKey]: d => `Duplicate localization key: ${this.#formatName(d.key)}`,
+		[Diagnostic.Type.OutdatedTranslation]: d => `Translation of ${this.#formatName(d.key)} for locale ${this.#formatName(d.localeId)} is outdated.`,
+		[Diagnostic.Type.MissingTranslation]: d => `Translation of ${this.#formatName(d.key)} for locale ${this.#formatName(d.localeId)} is missing.`,
+		[Diagnostic.Type.ModifiedSource]: d => `Source file is not in sync with translation data. Run i18n tools in development mode once and check for i18n related changes.`,
+		[Diagnostic.Type.ModifiedTranslation]: d => `Translation data is not in sync with source files. Run i18n tools in development mode once and check for i18n related changes.`,
+		[Diagnostic.Type.UnknownLocale]: d => `Key ${this.#formatName(d.key)} has translations for ${this.#formatName(d.localeId)}, but this locale is not configured.`,
 	};
 
-	public format<T extends Diagnostic.Type>(diagnostic: Diagnostic<T>) {
+	format<T extends Diagnostic.Type>(diagnostic: Diagnostic<T>) {
 		let fileInfo = "";
 		if (diagnostic.filename) {
 			const filename = (this.context ? relative(this.context, diagnostic.filename) : diagnostic.filename);
@@ -143,15 +149,23 @@ export class DiagnosticFormatter {
 				fileInfo += `:${colors.yellowBright(String(diagnostic.start.line))}:${colors.yellowBright(String(diagnostic.start.col))}`;
 			}
 		}
-
-		const message = this.messages[diagnostic.type](<Diagnostic.Details<any>> diagnostic.details);
-
-		return `[${colors.red("aurelia-i18n")}]${fileInfo} ${message}`;
+		const message = this.#messages[diagnostic.type](<Diagnostic.Details<any>> diagnostic.details);
+		let raw = `[${colors.red("aurelia-i18n")}]${fileInfo} ${message}`;
+		if (!this.color) {
+			raw = colors.strip(raw);
+		}
+		return raw;
 	}
 }
 
 export interface DiagnosticFormatterOptions {
-	prefix?: string;
+	/**
+	 * If true (default), formatted output is colored.
+	 */
 	color?: boolean;
+
+	/**
+	 * Optional absolute path to omit from formatted file paths.
+	 */
 	context?: string;
 }

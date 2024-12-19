@@ -1,23 +1,22 @@
 import { isAbsolute, join, relative } from "node:path";
-
-import { LocaleData } from "./locale-data.js";
 import { Config } from "./config.js";
-import { Diagnostics, Diagnostic } from "./diagnostics.js";
+import { Diagnostic, Diagnostics } from "./diagnostics.js";
+import { LocaleData } from "./locale-data.js";
 
 /**
  * A container for translation data that is used as an
  * interface between this library and external tools.
  */
 export class TranslationData {
-	public constructor(
+	constructor(
 		/** A map of absolute filenames to file information */
-		public readonly files = new Map<string, TranslationData.File>(),
+		readonly files = new Map<string, TranslationData.File>(),
 
 		/** An array of obsolete translations */
-		public readonly obsolete: TranslationData.ObsoleteTranslation[] = [],
+		readonly obsolete: TranslationData.ObsoleteTranslation[] = [],
 
 		/** The version of the file that was loaded */
-		public readonly parsedVersion: 1 | 2 = 2
+		readonly parsedVersion: 1 | 2 = 2
 	) {}
 
 	/**
@@ -26,7 +25,7 @@ export class TranslationData {
 	 * @param keys A map of i18n keys to english translations.
 	 * @returns true if anything has been modified.
 	 */
-	public updateKeys(filename: string, keys: Map<string, string>) {
+	updateKeys(filename: string, keys: Map<string, string>) {
 		let modified = false;
 		let file = this.files.get(filename);
 		if (!file) {
@@ -57,7 +56,7 @@ export class TranslationData {
 		}
 		for (const [key, translationSet] of file.content) {
 			if (!keys.has(key)) {
-				this.pushObsoleteSet(translationSet);
+				this.#pushObsoleteSet(translationSet);
 				file.content.delete(key);
 				modified = true;
 			}
@@ -70,7 +69,7 @@ export class TranslationData {
 	 * @param config The project configuration.
 	 * @returns A map of locale ids to compiled locale data.
 	 */
-	public compile(config: Config, diagnostics: Diagnostics) {
+	compile(config: Config, diagnostics: Diagnostics) {
 		const locales = new Map<string, LocaleData>(config.locales.map(locale => {
 			return [locale, LocaleData.createNew()];
 		}));
@@ -130,7 +129,7 @@ export class TranslationData {
 	 * @param hintFilenames A hint to other files where translations for the old key could be found.
 	 * @returns true if anything has been copied.
 	 */
-	public copyTranslations(filename: string, oldKey: string, newKey: string, hintFilenames?: Iterable<string>) {
+	copyTranslations(filename: string, oldKey: string, newKey: string, hintFilenames?: Iterable<string>) {
 		const file = this.files.get(filename);
 		if (file) {
 			const translation = file.content.get(oldKey);
@@ -153,7 +152,7 @@ export class TranslationData {
 		return false;
 	}
 
-	private pushObsoleteSet(translationSet: TranslationData.TranslationSet) {
+	#pushObsoleteSet(translationSet: TranslationData.TranslationSet) {
 		if (translationSet.translations.size > 0) {
 			this.obsolete.push({
 				content: translationSet.source.content,
@@ -164,12 +163,12 @@ export class TranslationData {
 		}
 	}
 
-	public deleteFile(filename: string) {
+	deleteFile(filename: string) {
 		var file = this.files.get(filename);
 		if (file) {
 			this.files.delete(filename);
 			for (var translationSet of file.content.values()) {
-				this.pushObsoleteSet(translationSet);
+				this.#pushObsoleteSet(translationSet);
 			}
 		}
 	}
@@ -179,7 +178,7 @@ export class TranslationData {
 	 * @param value The set to clone.
 	 * @param markAsOutdated If true, the clone will be marked as outdated. Default is `true`
 	 */
-	public static cloneTranslationSet(value: TranslationData.TranslationSet, markAsOutdated = true): TranslationData.TranslationSet {
+	static cloneTranslationSet(value: TranslationData.TranslationSet, markAsOutdated = true): TranslationData.TranslationSet {
 		const translations = new Map();
 		for (const [localeId, translation] of value.translations) {
 			translations.set(localeId, TranslationData.cloneTranslation(translation));
@@ -194,7 +193,7 @@ export class TranslationData {
 	/**
 	 * Deep clone a translation object.
 	 */
-	public static cloneTranslation(value: TranslationData.Translation): TranslationData.Translation {
+	static cloneTranslation(value: TranslationData.Translation): TranslationData.Translation {
 		return {
 			content: value.content,
 			lastModified: value.lastModified,
@@ -207,7 +206,7 @@ export class TranslationData {
 	 * @param json The json data.
 	 * @param basePath The base path for resolving filenames.
 	 */
-	public static parse(json: string, basePath: string) {
+	static parse(json: string, basePath: string) {
 		const data: TranslationData.JsonV1 | TranslationData.JsonV2 = JSON.parse(json);
 		if (!isObject(data)) {
 			throw new TypeError(`data must be an object.`);
@@ -314,7 +313,7 @@ export class TranslationData {
 	 * Format this translation data as json.
 	 * @param basePath The base path for creating relative filenames.
 	 */
-	public formatJson(basePath: string) {
+	formatJson(basePath: string) {
 		const json: TranslationData.JsonV2 = Object.create(null)
 		json.version = 2;
 

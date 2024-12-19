@@ -1,14 +1,11 @@
+import { Diagnostic, Diagnostics, Project, TranslationData } from "@netatwork/aurelia-i18n-tools";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { ExecutionContext } from "ava";
-
-import { Diagnostics, Diagnostic, Project, TranslationData } from "../src/index.js";
-
-export function expectNoDiagnostics(t: ExecutionContext) {
+export function expectNoDiagnostics() {
 	const host = new Diagnostics();
 	host.on("report", diagnostic => {
-		t.fail(`Unexpected diagnostic: ${diagnostic.type}`);
+		throw new Error(`Unexpected diagnostic: ${diagnostic.type}`);
 	});
 	return host;
 }

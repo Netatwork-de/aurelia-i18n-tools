@@ -1,42 +1,46 @@
 import { parseFragment } from "parse5";
-import { traverseElements, getAttributeValue, analyzeElementContent, treeDiagnostics, DocumentFragment, Element } from "./utility/parse5-tree.js";
-import { Config, ElementContentLocalizationType } from "./config.js";
 import { AureliaI18nAttribute } from "./aurelia-i18n-attribute.js";
-import { Source, SourceJustifyKeysOptions, SourceJustifyKeysResult } from "./source.js";
+import { Config, ElementContentLocalizationType } from "./config.js";
 import { Diagnostic } from "./diagnostics.js";
+import { Source, SourceJustifyKeysOptions, SourceJustifyKeysResult } from "./source.js";
+import { analyzeElementContent, DocumentFragment, Element, getAttributeValue, traverseElements, treeDiagnostics } from "./utility/parse5-tree.js";
 
 /**
  * Represents a localized aurelia template file.
  */
 export class AureliaTemplateFile implements Source {
-	private constructor(
-		private readonly _filename: string,
-		private _source: string,
-		private _root: DocumentFragment
-	) {}
+	#filename: string;
+	#source: string;
+	#root: DocumentFragment;
 
-	private static parseHtml(source: string) {
+	constructor(filename: string, source: string, root: DocumentFragment) {
+		this.#filename = filename;
+		this.#source = source;
+		this.#root = root;
+	}
+
+	static #parseHtml(source: string) {
 		return parseFragment(source, {
 			scriptingEnabled: false,
 			sourceCodeLocationInfo: true
 		});
 	}
 
-	public static parse(filename: string, source: string) {
-		return new AureliaTemplateFile(filename, source, AureliaTemplateFile.parseHtml(source));
+	static parse(filename: string, source: string) {
+		return new AureliaTemplateFile(filename, source, AureliaTemplateFile.#parseHtml(source));
 	}
 
-	public get filename() {
-		return this._filename;
+	get filename() {
+		return this.#filename;
 	}
 
-	public get source() {
-		return this._source;
+	get source() {
+		return this.#source;
 	}
 
-	public extractKeys(config: Config) {
+	extractKeys(config: Config) {
 		const keys = new Map<string, string>();
-		for (const element of traverseElements(this._root, config.ignoreElement)) {
+		for (const element of traverseElements(this.#root, config.ignoreElement)) {
 			const elementWhitespaceHandling = config.getElementWhitespaceHandling(element.tagName);
 
 			const attributeValue = getAttributeValue(element, "t");
@@ -76,11 +80,11 @@ export class AureliaTemplateFile implements Source {
 		return keys;
 	}
 
-	public justifyKeys(config: Config, { prefix, diagnostics, diagnosticsOnly, isReserved }: SourceJustifyKeysOptions): SourceJustifyKeysResult {
+	justifyKeys(config: Config, { prefix, diagnostics, diagnosticsOnly, isReserved }: SourceJustifyKeysOptions): SourceJustifyKeysResult {
 		const knownKeys = new Set<string>();
 		const candidates: JustificationCandidate[] = [];
 
-		for (const element of traverseElements(this._root, config.ignoreElement)) {
+		for (const element of traverseElements(this.#root, config.ignoreElement)) {
 			const elementConfig = config.getLocalizedElement(element.tagName);
 			const { hasText, hasElements } = analyzeElementContent(element, config.ignoreTextContent);
 			const originalAttributeValue = getAttributeValue(element, "t");
@@ -89,7 +93,7 @@ export class AureliaTemplateFile implements Source {
 					diagnostics.report({
 						type: Diagnostic.Type.MixedContent,
 						details: {},
-						filename: this._filename,
+						filename: this.filename,
 						source: this.source,
 						...treeDiagnostics.content(element)
 					});
@@ -106,7 +110,7 @@ export class AureliaTemplateFile implements Source {
 						diagnostics.report({
 							type: Diagnostic.Type.InvalidTAttribute,
 							details: { error },
-							filename: this._filename,
+							filename: this.filename,
 							source: this.source,
 							...treeDiagnostics.attribute(element, "t")
 						});
@@ -119,7 +123,7 @@ export class AureliaTemplateFile implements Source {
 					diagnostics.report({
 						type: Diagnostic.Type.UnlocalizedText,
 						details: {},
-						filename: this._filename,
+						filename: this.filename,
 						source: this.source,
 						...treeDiagnostics.content(element)
 					});
@@ -128,7 +132,7 @@ export class AureliaTemplateFile implements Source {
 					diagnostics.report({
 						type: Diagnostic.Type.DisallowedTAttribute,
 						details: {},
-						filename: this._filename,
+						filename: this.filename,
 						source: this.source,
 						...treeDiagnostics.startTag(element)
 					});
@@ -183,7 +187,7 @@ export class AureliaTemplateFile implements Source {
 					diagnostics.report({
 						type: Diagnostic.Type.DisallowedContent,
 						details: {},
-						filename: this._filename,
+						filename: this.filename,
 						source: this.source,
 						...treeDiagnostics.content
 					});
@@ -204,7 +208,7 @@ export class AureliaTemplateFile implements Source {
 						diagnostics.report({
 							type: Diagnostic.Type.DisallowedLocalizedAttribute,
 							details: { key, name },
-							filename: this._filename,
+							filename: this.filename,
 							source: this.source,
 							...treeDiagnostics.startTag(element)
 						});
@@ -217,10 +221,10 @@ export class AureliaTemplateFile implements Source {
 				const attributeLocation = element.sourceCodeLocation!.attrs!.t;
 				start = attributeLocation.startOffset;
 				end = attributeLocation.endOffset;
-				while (/\s/.test(this._source.charAt(start - 1))) {
+				while (/\s/.test(this.source.charAt(start - 1))) {
 					start--;
 				}
-				space = this._source.slice(start, attributeLocation.startOffset);
+				space = this.source.slice(start, attributeLocation.startOffset);
 			} else {
 				const tagLocation = location.startTag!;
 				start = end = tagLocation.endOffset - 1;
@@ -239,7 +243,7 @@ export class AureliaTemplateFile implements Source {
 				diagnostics.report({
 					type: Diagnostic.Type.WrongPrefix,
 					details: { key, expectedPrefix: prefix },
-					filename: this._filename
+					filename: this.filename
 				});
 			}
 		}
@@ -249,16 +253,16 @@ export class AureliaTemplateFile implements Source {
 		let updatedSource = "";
 		let sourcePos = 0;
 		for (const commit of commits) {
-			updatedSource += this._source.slice(sourcePos, commit.start);
+			updatedSource += this.source.slice(sourcePos, commit.start);
 			updatedSource += commit.replacement;
 			sourcePos = commit.end;
 		}
-		updatedSource += this._source.slice(sourcePos);
+		updatedSource += this.source.slice(sourcePos);
 
-		const modified = this._source !== updatedSource;
+		const modified = this.source !== updatedSource;
 		if (!diagnosticsOnly) {
-			this._source = updatedSource;
-			this._root = AureliaTemplateFile.parseHtml(updatedSource);
+			this.#source = updatedSource;
+			this.#root = AureliaTemplateFile.#parseHtml(updatedSource);
 		}
 		return { modified, replacedKeys };
 	}

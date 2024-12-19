@@ -1,55 +1,70 @@
-import { basename, dirname, extname, relative } from "node:path";
-
-import { Config } from "./config.js";
-import { Source } from "./source.js";
-import { Diagnostics, Diagnostic, DiagnosticFormatter } from "./diagnostics.js";
-import { PairSet } from "./utility/pair-set.js";
-import { TranslationData } from "./translation-data.js";
-import { LocaleData } from "./locale-data.js";
-import { deduplicateModuleFilenames, findFiles, joinPattern, watchFiles } from "./utility/file-system.js";
-import { AureliaTemplateFile } from "./aurelia-template-file.js";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { basename, dirname, extname, relative } from "node:path";
+import { AureliaTemplateFile } from "./aurelia-template-file.js";
+import { Config } from "./config.js";
+import { Diagnostic, DiagnosticFormatter, Diagnostics } from "./diagnostics.js";
 import { JsonResourceFile } from "./json-resource-file.js";
+import { LocaleData } from "./locale-data.js";
+import { Source } from "./source.js";
+import { TranslationData } from "./translation-data.js";
+import { deduplicateModuleFilenames, findFiles, joinPattern, watchFiles } from "./utility/file-system.js";
+import { PairSet } from "./utility/pair-set.js";
 
 export class Project {
-	public readonly config: Config;
-	public readonly diagnostics = new Diagnostics();
-	public readonly diagnosticFormatter = new DiagnosticFormatter();
-	public readonly development: boolean;
+	#config: Config;
+	#development: boolean;
+	#diagnostics = new Diagnostics();
+	#diagnosticFormatter = new DiagnosticFormatter();
 
 	/** A map of filenames to sources. */
-	private readonly _sources = new Map<string, Source>();
+	#sources = new Map<string, Source>();
 	/** A pair set of filename/key pairs. */
-	private readonly _knownKeys = new PairSet<string, string>();
+	#knownKeys = new PairSet<string, string>();
 	/** A set of filenames of sources that have not been justified yet. */
-	private readonly _unprocessedSources = new Set<string>();
+	#unprocessedSources = new Set<string>();
 	/** A set of filenames of sources that have been modified in memory. */
-	private readonly _modifiedSources = new Set<string>();
+	#modifiedSources = new Set<string>();
 	/** Map from locales to filenames to external locale data. */
-	private readonly _externalLocales = new Map<string, Map<string, LocaleData>>();
+	#externalLocales = new Map<string, Map<string, LocaleData>>();
 
-	private _translationData = new TranslationData();
-	private _translationDataModified = false;
+	#translationData = new TranslationData();
+	#translationDataModified = false;
 
-	public constructor(options: ProjectOptions) {
-		this.config = options.config;
-		this.development = Boolean(options.development);
+	constructor(options: ProjectOptions) {
+		this.#config = options.config;
+		this.#development = Boolean(options.development);
+	}
+
+	get config() {
+		return this.#config;
+	}
+
+	get diagnostics() {
+		return this.#diagnostics;
+	}
+
+	get diagnosticFormatter() {
+		return this.#diagnosticFormatter;
+	}
+
+	get development() {
+		return this.#development;
 	}
 
 	/**
 	 * Get or set translation data.
 	 * A task runner should set this property before processing sources if translation data exists on disk.
 	 */
-	public get translationData() {
-		return this._translationData;
+	get translationData() {
+		return this.#translationData;
 	}
 
-	public set translationData(data: TranslationData) {
-		this._translationData = data;
-		this._translationDataModified = data.parsedVersion != 2;
+	set translationData(data: TranslationData) {
+		this.#translationData = data;
+		this.#translationDataModified = data.parsedVersion != 2;
 	}
 
-	public getPrefix(filename: string) {
+	getPrefix(filename: string) {
 		if (/^\.\.($|[\\\/])/.test(relative(this.config.src, filename))) {
 			throw new Error(`Filename is outside of the project source directory: ${filename}`);
 		}
@@ -75,51 +90,51 @@ export class Project {
 		return `${this.config.prefix}${sanitizeName(name)}.`;
 	}
 
-	protected extractKeys(source: Source, prefix = this.getPrefix(source.filename)) {
+	#extractKeys(source: Source, prefix = this.getPrefix(source.filename)) {
 		const keys = source.extractKeys(this.config, { prefix, diagnostics: this.diagnostics });
-		this._knownKeys.deleteKey(source.filename);
+		this.#knownKeys.deleteKey(source.filename);
 		for (const key of keys.keys()) {
-			this._knownKeys.add(source.filename, key);
+			this.#knownKeys.add(source.filename, key);
 		}
-		if (this._translationData.updateKeys(source.filename, keys)) {
-			this._translationDataModified = true;
+		if (this.#translationData.updateKeys(source.filename, keys)) {
+			this.#translationDataModified = true;
 		}
 	}
 
 	/**
 	 * Should be called by a task runner to update or add a source file.
 	 */
-	public updateSource(source: Source) {
-		const oldSource = this._sources.get(source.filename);
-		this._sources.set(source.filename, source);
+	updateSource(source: Source) {
+		const oldSource = this.#sources.get(source.filename);
+		this.#sources.set(source.filename, source);
 		if (!oldSource || oldSource.source !== source.source) {
-			this._unprocessedSources.add(source.filename);
-			this.extractKeys(source);
+			this.#unprocessedSources.add(source.filename);
+			this.#extractKeys(source);
 		}
 	}
 
 	/**
 	 * Can be called by a task runner to delete a source.
 	 */
-	public deleteSource(filename: string) {
-		this._sources.delete(filename);
-		this._unprocessedSources.delete(filename);
-		this._knownKeys.deleteKey(filename);
-		this._modifiedSources.delete(filename);
+	deleteSource(filename: string) {
+		this.#sources.delete(filename);
+		this.#unprocessedSources.delete(filename);
+		this.#knownKeys.deleteKey(filename);
+		this.#modifiedSources.delete(filename);
 	}
 
 	/**
 	 * Should be called by a task runner to process updated sources.
 	 */
-	public processSources() {
-		for (const [filename, file] of this._translationData.files) {
+	processSources() {
+		for (const [filename, file] of this.#translationData.files) {
 			for (const key of file.content.keys()) {
-				this._knownKeys.add(filename, key);
+				this.#knownKeys.add(filename, key);
 			}
 		}
-		for (const filename of this._unprocessedSources) {
-			this._unprocessedSources.delete(filename);
-			const source = this._sources.get(filename)!;
+		for (const filename of this.#unprocessedSources) {
+			this.#unprocessedSources.delete(filename);
+			const source = this.#sources.get(filename)!;
 			if (source.justifyKeys) {
 				const prefix = this.getPrefix(filename);
 				const result = source.justifyKeys(this.config, {
@@ -127,7 +142,7 @@ export class Project {
 					diagnostics: this.diagnostics,
 					diagnosticsOnly: !this.development,
 					isReserved: key => {
-						const filenames = this._knownKeys.getKeys(key);
+						const filenames = this.#knownKeys.getKeys(key);
 						if (filenames) {
 							return filenames.size > (filenames.has(filename) ? 1 : 0);
 						}
@@ -137,21 +152,21 @@ export class Project {
 				if (result.modified) {
 					for (const [oldKey, newKeys] of result.replacedKeys) {
 						for (const newKey of newKeys) {
-							const hintFilenames = this._knownKeys.getKeys(oldKey);
-							if (this._translationData.copyTranslations(filename, oldKey, newKey, hintFilenames)) {
-								this._translationDataModified = true;
+							const hintFilenames = this.#knownKeys.getKeys(oldKey);
+							if (this.#translationData.copyTranslations(filename, oldKey, newKey, hintFilenames)) {
+								this.#translationDataModified = true;
 							}
 						}
 					}
-					this.extractKeys(source, prefix);
-					this._modifiedSources.add(filename);
+					this.#extractKeys(source, prefix);
+					this.#modifiedSources.add(filename);
 				}
 			}
 		}
-		for (const [filename, file] of this._translationData.files) {
-			if (!this._sources.has(filename) || file.content.size === 0) {
-				this._translationData.deleteFile(filename);
-				this._translationDataModified = true;
+		for (const [filename, file] of this.#translationData.files) {
+			if (!this.#sources.has(filename) || file.content.size === 0) {
+				this.#translationData.deleteFile(filename);
+				this.#translationDataModified = true;
 			}
 		}
 	}
@@ -164,34 +179,34 @@ export class Project {
 	 * In prorudction, no hooks will be invoked and diagnostics
 	 * are reported if anything has been modified.
 	 */
-	public async handleModified(hooks: ProjectHandleModifiedHooks) {
+	async handleModified(hooks: ProjectHandleModifiedHooks) {
 		if (this.development) {
 			const writeTasks: (void | Promise<void>)[] = [];
 
-			for (const filename of this._modifiedSources) {
-				this._modifiedSources.delete(filename);
+			for (const filename of this.#modifiedSources) {
+				this.#modifiedSources.delete(filename);
 				if (hooks.writeSource) {
-					writeTasks.push(hooks.writeSource(this._sources.get(filename)!));
+					writeTasks.push(hooks.writeSource(this.#sources.get(filename)!));
 				}
 			}
 
-			if (this._translationDataModified) {
-				this._translationDataModified = false;
+			if (this.#translationDataModified) {
+				this.#translationDataModified = false;
 				if (hooks.writeTranslationData) {
-					writeTasks.push(hooks.writeTranslationData(this._translationData));
+					writeTasks.push(hooks.writeTranslationData(this.#translationData));
 				}
 			}
 
 			await Promise.all(writeTasks);
 		} else {
-			for (const filename of this._modifiedSources) {
+			for (const filename of this.#modifiedSources) {
 				this.diagnostics.report({
 					type: Diagnostic.Type.ModifiedSource,
 					details: {},
 					filename
 				});
 			}
-			if (this._translationDataModified) {
+			if (this.#translationDataModified) {
 				this.diagnostics.report({
 					type: Diagnostic.Type.ModifiedTranslation,
 					details: {}
@@ -203,12 +218,12 @@ export class Project {
 	/**
 	 * Add external locale data.
 	 */
-	public addExternalLocale(localeId: string, filename: string, data: LocaleData) {
-		const entries = this._externalLocales.get(localeId);
+	addExternalLocale(localeId: string, filename: string, data: LocaleData) {
+		const entries = this.#externalLocales.get(localeId);
 		if (entries) {
 			entries.set(filename, data);
 		} else {
-			this._externalLocales.set(localeId, new Map([[filename, data]]));
+			this.#externalLocales.set(localeId, new Map([[filename, data]]));
 		}
 	}
 
@@ -216,9 +231,9 @@ export class Project {
 	 * Compile translation data and external locales.
 	 * @returns A map of locale ids to compiled locale data.
 	 */
-	public compileLocales() {
-		const locales = this._translationData.compile(this.config, this.diagnostics);
-		for (const [localeId, files] of this._externalLocales) {
+	compileLocales() {
+		const locales = this.#translationData.compile(this.config, this.diagnostics);
+		for (const [localeId, files] of this.#externalLocales) {
 			for (const data of files.values()) {
 				const target = locales.get(localeId);
 				if (target) {
@@ -236,7 +251,7 @@ export class Project {
 	 *
 	 * This will also set the process exit code to 1 if any errors are reported.
 	 */
-	public reportDiagnosticsToConsole() {
+	reportDiagnosticsToConsole() {
 		this.diagnostics.on("report", diagnostic => {
 			const handling = this.config.getDiagnosticHandling(diagnostic.type);
 			if (handling === Config.DiagnosticHandling.Error) {
@@ -251,7 +266,7 @@ export class Project {
 	/**
 	 * Run the standard production or development workflow for this project.
 	 */
-	public async run(options?: ProjectRunOptions) {
+	async run(options?: ProjectRunOptions) {
 		const sourcePatterns = [
 			"**/*.html",
 			"**/*.r.json",

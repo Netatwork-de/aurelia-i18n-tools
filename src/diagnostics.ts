@@ -128,8 +128,8 @@ export class DiagnosticFormatter {
 		[Diagnostic.Type.DuplicateKey]: d => `Duplicate localization key: ${this.#formatName(d.key)}`,
 		[Diagnostic.Type.OutdatedTranslation]: d => `Translation of ${this.#formatName(d.key)} for locale ${this.#formatName(d.localeId)} is outdated.`,
 		[Diagnostic.Type.MissingTranslation]: d => `Translation of ${this.#formatName(d.key)} for locale ${this.#formatName(d.localeId)} is missing.`,
-		[Diagnostic.Type.ModifiedSource]: d => `Changes to the source should have been committed.`,
-		[Diagnostic.Type.ModifiedTranslation]: d => `Changes to translation data should have been committed.`,
+		[Diagnostic.Type.ModifiedSource]: d => `Source file is not in sync with translation data. Run i18n tools in development mode once and check for i18n related changes.`,
+		[Diagnostic.Type.ModifiedTranslation]: d => `Translation data is not in sync with source files. Run i18n tools in development mode once and check for i18n related changes.`,
 		[Diagnostic.Type.UnknownLocale]: d => `Key ${this.#formatName(d.key)} has translations for ${this.#formatName(d.localeId)}, but this locale is not configured.`,
 	};
 

@@ -1,5 +1,4 @@
 import { resolve } from "node:path";
-
 import { Diagnostic } from "./diagnostics.js";
 
 export interface ConfigOptions {

@@ -1,15 +1,14 @@
-import { basename, dirname, extname, relative } from "node:path";
-
-import { Config } from "./config.js";
-import { Source } from "./source.js";
-import { Diagnostics, Diagnostic, DiagnosticFormatter } from "./diagnostics.js";
-import { PairSet } from "./utility/pair-set.js";
-import { TranslationData } from "./translation-data.js";
-import { LocaleData } from "./locale-data.js";
-import { deduplicateModuleFilenames, findFiles, joinPattern, watchFiles } from "./utility/file-system.js";
-import { AureliaTemplateFile } from "./aurelia-template-file.js";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { basename, dirname, extname, relative } from "node:path";
+import { AureliaTemplateFile } from "./aurelia-template-file.js";
+import { Config } from "./config.js";
+import { Diagnostic, DiagnosticFormatter, Diagnostics } from "./diagnostics.js";
 import { JsonResourceFile } from "./json-resource-file.js";
+import { LocaleData } from "./locale-data.js";
+import { Source } from "./source.js";
+import { TranslationData } from "./translation-data.js";
+import { deduplicateModuleFilenames, findFiles, joinPattern, watchFiles } from "./utility/file-system.js";
+import { PairSet } from "./utility/pair-set.js";
 
 export class Project {
 	public readonly config: Config;

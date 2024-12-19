@@ -1,4 +1,4 @@
-import { Diagnostics, Diagnostic } from "./diagnostics.js";
+import { Diagnostic, Diagnostics } from "./diagnostics.js";
 
 export interface LocaleData {
 	[part: string]: LocaleData | string;

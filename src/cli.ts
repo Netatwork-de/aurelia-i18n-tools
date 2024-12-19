@@ -1,13 +1,10 @@
 #!/usr/bin/env node
-
-import { pathToFileURL } from "node:url";
 import { readFile } from "node:fs/promises";
 import { dirname, extname, relative, resolve } from "node:path";
-
+import { pathToFileURL } from "node:url";
 import parse from "yargs-parser";
-
-import { Project } from "./project.js";
 import { ConfigOptions, createConfig } from "./config.js";
+import { Project } from "./project.js";
 
 (async () => {
 	const args = parse(process.argv.slice(2), {

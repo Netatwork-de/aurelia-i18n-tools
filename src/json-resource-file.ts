@@ -1,7 +1,7 @@
 import { Config } from "./config.js";
-import { Source, SourceExtractKeysOptions } from "./source.js";
-import { LocaleData } from "./locale-data.js";
 import { Diagnostic } from "./diagnostics.js";
+import { LocaleData } from "./locale-data.js";
+import { Source, SourceExtractKeysOptions } from "./source.js";
 
 export class JsonResourceFile implements Source {
 	public constructor(

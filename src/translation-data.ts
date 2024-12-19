@@ -1,8 +1,7 @@
 import { isAbsolute, join, relative } from "node:path";
-
-import { LocaleData } from "./locale-data.js";
 import { Config } from "./config.js";
-import { Diagnostics, Diagnostic } from "./diagnostics.js";
+import { Diagnostic, Diagnostics } from "./diagnostics.js";
+import { LocaleData } from "./locale-data.js";
 
 /**
  * A container for translation data that is used as an

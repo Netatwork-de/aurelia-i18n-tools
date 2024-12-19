@@ -4,31 +4,31 @@
  * fast queries for both keys and values.
  */
 export class PairSet<K, V> {
-	private readonly _keys = new Map<K, Set<V>>();
-	private readonly _values = new Map<V, Set<K>>();
+	#keys = new Map<K, Set<V>>();
+	#vals = new Map<V, Set<K>>();
 
-	public add(key: K, value: V) {
-		add(this._keys, key, value);
-		add(this._values, value, key);
+	add(key: K, value: V) {
+		add(this.#keys, key, value);
+		add(this.#vals, value, key);
 	}
 
-	public delete(key: K, value: V) {
-		del(this._keys, key, value);
-		del(this._values, value, key);
+	delete(key: K, value: V) {
+		del(this.#keys, key, value);
+		del(this.#vals, value, key);
 	}
 
-	public deleteKey(key: K) {
-		const values = this._keys.get(key);
+	deleteKey(key: K) {
+		const values = this.#keys.get(key);
 		if (values) {
-			this._keys.delete(key);
+			this.#keys.delete(key);
 			for (const value of values) {
-				del(this._values, value, key);
+				del(this.#vals, value, key);
 			}
 		}
 	}
 
-	public getKeys(value: V): ReadonlySet<K> | undefined {
-		return this._values.get(value);
+	getKeys(value: V): ReadonlySet<K> | undefined {
+		return this.#vals.get(value);
 	}
 }
 

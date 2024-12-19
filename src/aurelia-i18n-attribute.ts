@@ -6,40 +6,40 @@ const NAME_DELIMITER = /,/g;
  * Representation of the "t" i18n attribute from aurelia-i18n.
  */
 export class AureliaI18nAttribute implements Iterable<[string, string]> {
-	private readonly _nameToKey = new Map<string, string>();
+	#nameToKey = new Map<string, string>();
 
-	public get isEmpty() {
-		return this._nameToKey.size === 0;
+	get isEmpty() {
+		return this.#nameToKey.size === 0;
 	}
 
-	public [Symbol.iterator]() {
-		return this._nameToKey[Symbol.iterator]();
+	[Symbol.iterator]() {
+		return this.#nameToKey[Symbol.iterator]();
 	}
 
-	public has(name: string) {
-		return this._nameToKey.has(name);
+	has(name: string) {
+		return this.#nameToKey.has(name);
 	}
 
-	public set(name: string, key: string) {
-		this._nameToKey.set(name, key);
+	set(name: string, key: string) {
+		this.#nameToKey.set(name, key);
 		if (name === "text") {
-			this._nameToKey.delete("html");
+			this.#nameToKey.delete("html");
 		} else if (name === "html") {
-			this._nameToKey.delete("text");
+			this.#nameToKey.delete("text");
 		}
 	}
 
-	public get(name: string) {
-		return this._nameToKey.get(name);
+	get(name: string) {
+		return this.#nameToKey.get(name);
 	}
 
-	public keys() {
-		return this._nameToKey.values();
+	keys() {
+		return this.#nameToKey.values();
 	}
 
-	public mapKeysToNames() {
+	mapKeysToNames() {
 		const keyToNames = new Map<string, string[]>();
-		for (const [name, key] of this._nameToKey) {
+		for (const [name, key] of this.#nameToKey) {
 			const names = keyToNames.get(key);
 			if (names) {
 				names.push(name);
@@ -50,13 +50,13 @@ export class AureliaI18nAttribute implements Iterable<[string, string]> {
 		return keyToNames;
 	}
 
-	public toString() {
+	toString() {
 		return Array.from(this.mapKeysToNames())
 			.map(([key, names]) => (names.length === 1 && names[0] === "text") ? key : `[${names.join(",")}]${key}`)
 			.join(";");
 	}
 
-	public static parse(value: string) {
+	static parse(value: string) {
 		const attribute = new AureliaI18nAttribute();
 		NAMES_KEY_PAIR.lastIndex = 0;
 		while (NAMES_KEY_PAIR.lastIndex < value.length) {

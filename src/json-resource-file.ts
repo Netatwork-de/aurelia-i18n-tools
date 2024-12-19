@@ -4,32 +4,36 @@ import { LocaleData } from "./locale-data.js";
 import { Source, SourceExtractKeysOptions } from "./source.js";
 
 export class JsonResourceFile implements Source {
-	public constructor(
-		private readonly _filename: string,
-		private readonly _source: string,
-		private readonly _data: LocaleData
-	) {}
+	#filename: string;
+	#source: string;
+	#data: LocaleData;
 
-	public get filename() {
-		return this._filename;
+	constructor(filename: string, source: string, data: LocaleData) {
+		this.#filename = filename;
+		this.#source = source;
+		this.#data = data;
 	}
 
-	public get source() {
-		return this._source;
+	get filename() {
+		return this.#filename;
 	}
 
-	public static parse(filename: string, source: string) {
+	get source() {
+		return this.#source;
+	}
+
+	static parse(filename: string, source: string) {
 		return new JsonResourceFile(filename, source, JSON.parse(source));
 	}
 
-	public extractKeys(config: Config, { prefix, diagnostics }: SourceExtractKeysOptions) {
+	extractKeys(config: Config, { prefix, diagnostics }: SourceExtractKeysOptions) {
 		const keys = new Map<string, string>();
 		(function traverse(this: JsonResourceFile, data: LocaleData, path: string[]) {
 			if (data === null || typeof data !== "object" || Array.isArray(data)) {
 				diagnostics.report({
 					type: Diagnostic.Type.InvalidJsonData,
 					details: { path },
-					filename: this._filename,
+					filename: this.#filename,
 					source: this.source
 				});
 			} else {
@@ -38,7 +42,7 @@ export class JsonResourceFile implements Source {
 						diagnostics.report({
 							type: Diagnostic.Type.InvalidJsonPartName,
 							details: { path },
-							filename: this._filename
+							filename: this.#filename
 						});
 					}
 					const childPath = path.concat(part);
@@ -50,7 +54,7 @@ export class JsonResourceFile implements Source {
 					}
 				}
 			}
-		}).call(this, this._data, []);
+		}).call(this, this.#data, []);
 		return keys;
 	}
 }

@@ -1,6 +1,6 @@
 {
 	"name": "@netatwork/aurelia-i18n-tools",
-	"version": "4.1.1",
+	"version": "5.0.0",
 	"description": "A toolchain to help with localization in aurelia projects.",
 	"repository": {
 		"type": "git",

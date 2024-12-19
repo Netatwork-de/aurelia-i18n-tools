@@ -15,25 +15,24 @@
 		"build": "tsc -p tsconfig-build.json",
 		"build:watch": "tsc -p tsconfig-build.json -w",
 		"test": "tsc -p tsconfig-test.json && ava",
-		"start": "tsc -p tsconfig-test.json && concurrently \"tsc -p tsconfig-test.json -w\" \"ava -w\"",
+		"start": "tsc -p tsconfig-test.json && mx-parallel \"tsc -p tsconfig-test.json -w\" \"ava -w\"",
 		"prepack": "npm test && npm run build"
 	},
 	"dependencies": {
 		"ansi-colors": "^4.1.3",
 		"chokidar": "^3.6.0",
 		"decamelize": "^6.0.0",
-		"parse5": "^7.1.2",
-		"picomatch": "^4.0.1",
+		"parse5": "^7.2.1",
+		"picomatch": "^4.0.2",
 		"yargs-parser": "^21.1.1"
 	},
 	"devDependencies": {
-		"@types/node": "^20.11.29",
-		"@types/parse5": "^7.0.0",
+		"@mxjp/parallel": "^1.0.2",
+		"@types/node": "^22.10.2",
 		"@types/picomatch": "^2.3.3",
 		"@types/yargs-parser": "^21.0.3",
 		"ava": "^6.1.2",
-		"concurrently": "^8.2.2",
-		"typescript": "^5.4.2"
+		"typescript": "^5.7.2"
 	},
 	"author": "Net at Work GmbH",
 	"license": "Apache-2.0"

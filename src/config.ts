@@ -80,7 +80,7 @@ export interface ConfigOptions {
 		 */
 		attributes?: Record<string, Config.WhitespaceHandling>;
 		/**
-		 *
+		 * Whitespace handling for node text content.
 		 */
 		content?: Config.WhitespaceHandling;
 	} | Config.WhitespaceHandling>;

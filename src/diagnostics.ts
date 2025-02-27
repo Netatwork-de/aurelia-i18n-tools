@@ -34,7 +34,7 @@ export namespace Diagnostic {
 		[Type.InvalidJsonData]: { path: string[] };
 		[Type.InvalidJsonPartName]: { path: string[] };
 		[Type.MixedContent]: {};
-		[Type.InvalidTAttribute]: { error: any };
+		[Type.InvalidTAttribute]: { error: unknown };
 		[Type.UnlocalizedText]: {};
 		[Type.DisallowedTAttribute]: {};
 		[Type.DisallowedContent]: {};
@@ -111,7 +111,7 @@ export class DiagnosticFormatter {
 		return colors.green(path.join("/"));
 	}
 
-	#formatError(error: any) {
+	#formatError(error: unknown) {
 		return inspect(error, false, undefined, this.color);
 	}
 

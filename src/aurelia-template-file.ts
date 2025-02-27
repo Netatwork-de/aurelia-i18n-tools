@@ -2,7 +2,7 @@ import { parseFragment } from "parse5";
 import { AureliaI18nAttribute } from "./aurelia-i18n-attribute.js";
 import { Config, ElementContentLocalizationType } from "./config.js";
 import { Diagnostic } from "./diagnostics.js";
-import { Source, SourceJustifyKeysOptions, SourceJustifyKeysResult } from "./source.js";
+import { Source, SourceExtractKeysOptions, SourceJustifyKeysOptions, SourceJustifyKeysResult } from "./source.js";
 import { analyzeElementContent, DocumentFragment, Element, getAttributeValue, traverseElements, treeDiagnostics } from "./utility/parse5-tree.js";
 
 /**
@@ -38,13 +38,13 @@ export class AureliaTemplateFile implements Source {
 		return this.#source;
 	}
 
-	extractKeys(config: Config) {
+	extractKeys(config: Config, { diagnostics }: SourceExtractKeysOptions) {
 		const keys = new Map<string, string>();
 		for (const element of traverseElements(this.#root, config.ignoreElement)) {
 			const elementWhitespaceHandling = config.getElementWhitespaceHandling(element.tagName);
 
 			const attributeValue = getAttributeValue(element, "t");
-			if (attributeValue !== undefined) {
+			if (attributeValue !== undefined && !config.ignoreAttributeValue(attributeValue)) {
 				try {
 					const attribute = AureliaI18nAttribute.parse(attributeValue);
 					for (const [name, key] of attribute) {
@@ -74,7 +74,15 @@ export class AureliaTemplateFile implements Source {
 							}
 						}
 					}
-				} catch {}
+				} catch (error) {
+					diagnostics.report({
+						type: Diagnostic.Type.InvalidTAttribute,
+						details: { error },
+						filename: this.filename,
+						source: this.source,
+						...treeDiagnostics.attribute(element, "t"),
+					});
+				}
 			}
 		}
 		return keys;
@@ -100,7 +108,7 @@ export class AureliaTemplateFile implements Source {
 				}
 
 				let originalAttribute: AureliaI18nAttribute | undefined;
-				if (originalAttributeValue !== undefined) {
+				if (originalAttributeValue !== undefined && !config.ignoreAttributeValue(originalAttributeValue)) {
 					try {
 						originalAttribute = AureliaI18nAttribute.parse(originalAttributeValue);
 						for (const key of originalAttribute.keys()) {
@@ -128,7 +136,7 @@ export class AureliaTemplateFile implements Source {
 						...treeDiagnostics.content(element)
 					});
 				}
-				if (originalAttributeValue) {
+				if (originalAttributeValue !== undefined) {
 					diagnostics.report({
 						type: Diagnostic.Type.DisallowedTAttribute,
 						details: {},

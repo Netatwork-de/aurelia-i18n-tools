@@ -33,6 +33,59 @@ await suite("aurelia-template-file", async () => {
 		`));
 	});
 
+	await suite("ignore t attributes by value", async () => {
+		await test("extractKeys", () => {
+			const source = AureliaTemplateFile.parse(filename, code(`
+				<div t="[value]\${foo.bar}"></div>
+				<div foo="bar" t="[foo]test.foo"></div>
+			`));
+			const result = source.extractKeys(config, {
+				prefix: "test.",
+				diagnostics: expectNoDiagnostics(),
+			});
+			deepStrictEqual(result, new Map([
+				["test.foo", "bar"],
+			]));
+		});
+
+		await test("justifyKeys", () => {
+			const source = AureliaTemplateFile.parse(filename, code(`
+				<div t="[value]\${foo.bar}"></div>
+				<div foo="bar"></div>
+			`));
+			const result = source.justifyKeys(config, {
+				prefix: "test.",
+				diagnostics: expectNoDiagnostics(),
+			});
+			strictEqual(result.modified, true);
+			strictEqual(result.replacedKeys.size, 0);
+			strictEqual(source.source, code(`
+				<div t="[value]\${foo.bar}"></div>
+				<div foo="bar" t="[foo]test.t0"></div>
+			`));
+		});
+
+		await test("disallowed diagnostic", () => {
+			const source = AureliaTemplateFile.parse(filename, code(`
+				<test-element t="\${foo.bar}"></test-element>
+				<div foo="bar"></div>
+			`));
+			const diagnostics = captureDiagnostics();
+			const result = source.justifyKeys(config, {
+				prefix: "test.",
+				diagnostics: diagnostics.host,
+			});
+			strictEqual(result.modified, true);
+			strictEqual(result.replacedKeys.size, 0);
+			strictEqual(source.source, code(`
+				<test-element t="\${foo.bar}"></test-element>
+				<div foo="bar" t="[foo]test.t0"></div>
+			`));
+			strictEqual(diagnostics.all.length, 1);
+			strictEqual(diagnostics.all[0].type, Diagnostic.Type.DisallowedTAttribute);
+		});
+	});
+
 	await test("reuse existing keys", () => {
 		const source = AureliaTemplateFile.parse(filename, code(`
 			<div foo="bar" t="test.t7">content</div>
@@ -136,7 +189,10 @@ await suite("aurelia-template-file", async () => {
 	function assertWhitespaceHandling(whitespace: ConfigOptions["whitespace"], markup: string, expectedValues: string[]) {
 		const config = createConfig(testDir, { src: ".", whitespace });
 		const source = AureliaTemplateFile.parse(filename, code(markup));
-		deepStrictEqual(Array.from(source.extractKeys(config).values()), expectedValues);
+		deepStrictEqual(Array.from(source.extractKeys(config, {
+			prefix: "test.",
+			diagnostics: expectNoDiagnostics(),
+		}).values()), expectedValues);
 	}
 
 	await test("preserves whitespace by default", () => {
